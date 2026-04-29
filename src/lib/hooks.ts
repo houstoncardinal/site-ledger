@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { accountsApi, expensesApi, incomesApi, projectsApi, vendorsApi } from "./api";
 import { toast } from "sonner";
 import type { Expense, Income, Project, Account } from "./types";
+import { queueAdd } from "./offlineQueue";
 
 export const useProjects = () =>
   useQuery({ queryKey: ["projects"], queryFn: projectsApi.list });
@@ -47,14 +48,20 @@ export const useCreateExpense = () => {
   return useMutation({
     mutationFn: async (e: Partial<Expense> & { _vendorCategory?: string }) => {
       const { _vendorCategory, ...rest } = e;
+      if (!navigator.onLine) {
+        queueAdd({ type: "expense", payload: rest });
+        return null;
+      }
       const res = await expensesApi.create(rest);
-      // remember vendor for autofill
       if (e.vendor) {
         await vendorsApi.upsert(e.vendor, _vendorCategory ?? e.category);
       }
       return res;
     },
-    onSuccess: () => { invalidate(qc, "expenses", "vendors"); toast.success("Expense logged"); },
+    onSuccess: (res) => {
+      invalidate(qc, "expenses", "vendors");
+      toast.success(res ? "Expense logged" : "Saved offline — will sync when connected");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 };
@@ -80,8 +87,17 @@ export const useDeleteExpense = () => {
 export const useCreateIncome = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (i: Partial<Income>) => incomesApi.create(i),
-    onSuccess: () => { invalidate(qc, "incomes"); toast.success("Income recorded"); },
+    mutationFn: async (i: Partial<Income>) => {
+      if (!navigator.onLine) {
+        queueAdd({ type: "income", payload: i });
+        return null;
+      }
+      return incomesApi.create(i);
+    },
+    onSuccess: (res) => {
+      invalidate(qc, "incomes");
+      toast.success(res ? "Income recorded" : "Saved offline — will sync when connected");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 };

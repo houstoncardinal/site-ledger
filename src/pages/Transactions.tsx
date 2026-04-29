@@ -7,6 +7,7 @@ import {
 import TransactionList from "@/components/TransactionList";
 import IncomeList from "@/components/IncomeList";
 import { Search, Download } from "lucide-react";
+import ReportButton from "@/components/ReportButton";
 import { CATEGORY_LABELS, ExpenseCategory } from "@/lib/types";
 import { useExpenses, useIncomes, useProjects } from "@/lib/hooks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,7 +29,15 @@ export default function Transactions() {
 
   useEffect(() => {
     const c = searchParams.get("category");
+    const p = searchParams.get("project");
+    const f = searchParams.get("from");
+    const t = searchParams.get("to");
+    const q = searchParams.get("q");
     if (c) setCategory(c);
+    if (p) setProject(p);
+    if (f) setFrom(f);
+    if (t) setTo(t);
+    if (q) setQ(q);
   }, [searchParams]);
 
   const filteredExpenses = useMemo(() => {
@@ -92,9 +101,12 @@ export default function Transactions() {
             <span className="text-emerald-700 font-semibold">+${totalIn.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
           </p>
         </div>
-        <Button variant="outline" onClick={exportAll}>
-          <Download className="w-4 h-4 mr-1" /> Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <ReportButton size="sm" />
+          <Button variant="outline" size="sm" onClick={exportAll}>
+            <Download className="w-4 h-4 mr-1" /> CSV
+          </Button>
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-2 md:grid-cols-6 gap-3">

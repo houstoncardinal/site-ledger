@@ -7,13 +7,17 @@ import {
 import { CATEGORY_COLORS, CATEGORY_LABELS, ExpenseCategory } from "@/lib/types";
 import { format, subDays, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import {
-  TrendingUp, DollarSign, FolderOpen, Activity,
+  TrendingUp, DollarSign, FolderOpen,
   ArrowUpRight, AlertTriangle, TrendingDown, Wallet,
+  Flame, Zap, Brain,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useExpenses, useIncomes, useProjects } from "@/lib/hooks";
+import ReportButton from "@/components/ReportButton";
 import { calcProjectInsights } from "@/lib/insights";
+import { calcBurnRate, detectAnomalies, generateInsights, calcProjectPredictions } from "@/lib/predictions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: projects = [], isLoading: lp } = useProjects();
@@ -94,27 +98,39 @@ export default function Dashboard() {
     }).slice(0, 4);
   }, [activeProjects, expenses, incomes]);
 
+  // Intelligence signals
+  const burnRate = useMemo(() => calcBurnRate(expenses), [expenses]);
+  const anomalies = useMemo(() => detectAnomalies(expenses), [expenses]);
+  const insights = useMemo(() => generateInsights(expenses, incomes, projects), [expenses, incomes, projects]);
+  const predictions = useMemo(() => calcProjectPredictions(activeProjects, expenses), [activeProjects, expenses]);
+
   if (lp || le) return <DashboardSkeleton />;
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+    <div className="px-4 py-6 md:px-8 md:py-8 space-y-5 max-w-7xl mx-auto">
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl md:text-4xl font-bold">Command Center</h1>
-          <p className="text-muted-foreground mt-1">Real-time view of your build economics.</p>
+          <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Your financial command center.</p>
         </div>
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
-          {[7, 30, 90].map((d) => (
-            <button
-              key={d}
-              onClick={() => setRange(d)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
-                range === d ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {d}D
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <ReportButton size="sm" />
+          <div className="flex gap-0.5 bg-muted rounded-xl p-1">
+            {[7, 30, 90].map((d) => (
+              <button
+                key={d}
+                onClick={() => setRange(d)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  range === d
+                    ? "bg-white shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {d}D
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -132,19 +148,103 @@ export default function Dashboard() {
         <SubCard label="Owed to vendors" value={fmt(unpaidEx)} sub={`${expenses.filter((e) => e.payment_status !== "paid").length} unpaid expenses`} />
       </div>
 
+      {/* Intelligence panel */}
+      {(insights.length > 0 || anomalies.length > 0) && (
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Contextual insights */}
+          {insights.length > 0 && (
+            <div className="stat-card space-y-1">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                    <Brain className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <SectionTitle>AI Insights</SectionTitle>
+                </div>
+                <Link to="/analytics" className="flex items-center gap-1 text-xs text-primary hover:opacity-70 transition font-semibold">
+                  View all <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </div>
+              {insights.map((ins, i) => (
+                <div key={i} className={cn(
+                  "flex items-start gap-2.5 text-sm px-3 py-2.5 rounded-xl",
+                  ins.type === "positive" ? "bg-emerald-50 text-emerald-800" : ins.type === "warning" ? "bg-red-50 text-primary" : "bg-muted/60 text-foreground"
+                )}>
+                  <span className={cn("w-1.5 h-1.5 rounded-full mt-[5px] shrink-0", ins.type === "positive" ? "bg-emerald-500" : ins.type === "warning" ? "bg-primary" : "bg-muted-foreground")} />
+                  <span className="leading-snug">{ins.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Burn rate + anomalies */}
+          <div className="stat-card space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-6 h-6 rounded-md bg-orange-100 flex items-center justify-center">
+                <Flame className="w-3.5 h-3.5 text-orange-500" />
+              </div>
+              <SectionTitle>Burn Rate</SectionTitle>
+            </div>
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display font-bold text-3xl">${burnRate.dailyRate.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span className="text-sm text-muted-foreground font-medium">/day</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Projected <span className="font-semibold text-foreground">${burnRate.projectedMonthTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span> this month
+                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{burnRate.confidence}</span>
+              </div>
+            </div>
+            {anomalies.length > 0 && (
+              <Link
+                to="/analytics?tab=anomalies"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {anomalies.length} unusual {anomalies.length === 1 ? "entry" : "entries"} detected
+                <ArrowUpRight className="w-3.5 h-3.5 ml-auto" />
+              </Link>
+            )}
+            {predictions.some((p) => p.budgetRisk === "danger" || p.budgetRisk === "warn") && (
+              <div className="space-y-1">
+                {predictions.filter((p) => p.budgetRisk !== "safe" && p.budgetRisk !== null).map((p) => (
+                  <Link
+                    key={p.project.id}
+                    to={`/projects/${p.project.id}`}
+                    className={cn("flex items-center gap-2 text-xs px-3 py-2 rounded-xl hover:bg-muted transition", p.budgetRisk === "danger" ? "text-primary" : "text-orange-600")}
+                  >
+                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", p.budgetRisk === "danger" ? "bg-primary" : "bg-orange-400")} />
+                    <span className="font-semibold truncate">{p.project.name}</span>
+                    <span className="ml-auto text-muted-foreground">
+                      {p.budgetRisk === "danger" ? "Over budget" : p.daysToOverrun ? `~${p.daysToOverrun}d to overrun` : "At risk"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Alerts */}
       {allAlerts.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold text-muted-foreground">
-            <AlertTriangle className="w-3.5 h-3.5 text-warning" /> Smart Alerts
+        <div className="stat-card">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center">
+              <AlertTriangle className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <SectionTitle>Smart Alerts</SectionTitle>
           </div>
-          {allAlerts.map((a, i) => (
-            <Link key={i} to={`/projects/${a.project.id}`} className="flex items-center gap-2 text-sm hover:bg-muted/50 p-2 -m-2 rounded">
-              <span className={`w-1.5 h-1.5 rounded-full ${a.level === "danger" ? "bg-primary" : "bg-warning"}`} />
-              <span className="font-semibold">{a.project.name}:</span>
-              <span className="text-muted-foreground">{a.message}</span>
-            </Link>
-          ))}
+          <div className="space-y-1">
+            {allAlerts.map((a, i) => (
+              <Link key={i} to={`/projects/${a.project.id}`} className="flex items-center gap-3 text-sm px-3 py-2.5 rounded-xl hover:bg-muted/60 transition">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${a.level === "danger" ? "bg-primary" : "bg-orange-400"}`} />
+                <span className="font-semibold">{a.project.name}</span>
+                <span className="text-muted-foreground truncate">{a.message}</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/50 ml-auto shrink-0" />
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
@@ -237,43 +337,54 @@ export default function Dashboard() {
 
       {/* Active projects */}
       <div className="stat-card">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <SectionTitle>Active Projects</SectionTitle>
-          <Link to="/projects" className="text-xs font-semibold text-primary flex items-center gap-1">
+          <Link to="/projects" className="text-xs font-semibold text-primary flex items-center gap-1 hover:opacity-70 transition">
             View all <ArrowUpRight className="w-3 h-3" />
           </Link>
         </div>
-        <div className="grid md:grid-cols-2 gap-2 mt-3">
+        <div className="grid md:grid-cols-2 gap-2.5">
           {activeProjects.length === 0 && (
-            <div className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-lg col-span-2">
-              No active projects yet. Create one to get started.
+            <div className="text-sm text-muted-foreground py-10 text-center border-2 border-dashed border-border rounded-2xl col-span-2">
+              No active projects yet — create one to get started.
             </div>
           )}
           {activeProjects.map((p) => {
             const ins = calcProjectInsights(p, expenses, incomes);
             const pct = ins.budgetUsedPct ?? 0;
+            const profitPositive = ins.profit >= 0;
             return (
-              <Link key={p.id} to={`/projects/${p.id}`} className="block p-3 rounded-lg border border-border hover:border-primary transition group">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold group-hover:text-primary transition">{p.name}</span>
-                  <span className={`text-sm font-display font-bold ${ins.profit >= 0 ? "text-emerald-700" : "text-primary"}`}>
-                    {ins.profit >= 0 ? "+" : "-"}${Math.abs(ins.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              <Link
+                key={p.id}
+                to={`/projects/${p.id}`}
+                className="block p-4 rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all duration-200 group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-semibold text-[14px] group-hover:text-primary transition leading-snug">{p.name}</span>
+                  <span className={cn(
+                    "font-display font-bold text-sm shrink-0",
+                    profitPositive ? "text-emerald-600" : "text-primary"
+                  )}>
+                    {profitPositive ? "+" : "−"}${Math.abs(ins.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                 </div>
                 {p.budget ? (
-                  <div className="mt-2">
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="mt-3">
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
                       <div
-                        className={`h-full ${pct > 90 ? "bg-primary" : pct > 70 ? "bg-warning" : "bg-success"}`}
+                        className={cn("h-full rounded-full transition-all", pct > 90 ? "bg-primary" : pct > 70 ? "bg-orange-400" : "bg-emerald-500")}
                         style={{ width: `${Math.min(100, pct)}%` }}
                       />
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      ${ins.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })} of ${Number(p.budget).toLocaleString()} budget · {pct.toFixed(0)}%
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1.5">
+                      <span>${ins.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })} spent</span>
+                      <span className={cn("font-semibold", pct > 90 ? "text-primary" : "text-muted-foreground")}>{pct.toFixed(0)}% of ${Number(p.budget).toLocaleString()}</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground mt-1">Spent ${ins.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                  <div className="text-[11px] text-muted-foreground mt-2">
+                    ${ins.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })} spent
+                  </div>
                 )}
               </Link>
             );
@@ -287,27 +398,44 @@ export default function Dashboard() {
 const fmt = (n: number) => `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
 function KPI({ label, value, icon: Icon, accent, color }: { label: string; value: string; icon: any; accent?: boolean; color?: "emerald" | "red" }) {
-  const valueColor = color === "emerald" ? "text-emerald-400" : color === "red" ? "text-primary" : "";
-  return (
-    <div className={`rounded-xl p-4 md:p-5 border ${accent ? "bg-surface-dark text-white border-transparent" : "bg-card border-border"}`}>
-      <div className="flex items-center justify-between">
-        <span className={`text-xs uppercase tracking-wider font-semibold ${accent ? "text-white/60" : "text-muted-foreground"}`}>{label}</span>
-        <Icon className={`w-4 h-4 ${accent ? "text-primary" : "text-muted-foreground"}`} />
+  const valueColor = color === "emerald" ? "text-emerald-600" : color === "red" ? "text-primary" : "text-foreground";
+  if (accent) {
+    return (
+      <div className="rounded-2xl p-4 md:p-5 bg-[#111] text-white" style={{ boxShadow: "var(--shadow-md)" }}>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[11px] font-semibold text-white/50 tracking-wide">{label}</span>
+          <div className="w-7 h-7 rounded-lg bg-white/[0.07] flex items-center justify-center">
+            <Icon className="w-3.5 h-3.5 text-primary" />
+          </div>
+        </div>
+        <div className="font-display font-bold text-2xl md:text-[28px] leading-none text-white">{value}</div>
       </div>
-      <div className={`font-display font-bold text-2xl md:text-3xl mt-2 ${accent ? valueColor || "" : valueColor}`}>{value}</div>
+    );
+  }
+  return (
+    <div className="metric-card">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[11px] font-semibold text-muted-foreground tracking-wide">{label}</span>
+        <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center">
+          <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+        </div>
+      </div>
+      <div className={`font-display font-bold text-2xl md:text-[28px] leading-none ${valueColor}`}>{value}</div>
     </div>
   );
 }
 
 function SubCard({ label, value, sub, positive }: { label: string; value: string; sub: string; positive?: boolean }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className="flex items-center gap-2">
-        <Wallet className={`w-4 h-4 ${positive ? "text-emerald-700" : "text-primary"}`} />
-        <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
+    <div className="metric-card">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${positive ? "bg-emerald-50" : "bg-red-50"}`}>
+          <Wallet className={`w-3.5 h-3.5 ${positive ? "text-emerald-600" : "text-primary"}`} />
+        </div>
+        <span className="text-[11px] font-semibold text-muted-foreground tracking-wide">{label}</span>
       </div>
-      <div className={`font-display font-bold text-xl md:text-2xl mt-1 ${positive ? "text-emerald-700" : "text-primary"}`}>{value}</div>
-      <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
+      <div className={`font-display font-bold text-xl md:text-2xl ${positive ? "text-emerald-600" : "text-primary"}`}>{value}</div>
+      <div className="text-xs text-muted-foreground mt-1">{sub}</div>
     </div>
   );
 }
@@ -317,7 +445,7 @@ function PeriodCard({ title, income, expenses }: { title: string; income: number
   return (
     <div className="stat-card">
       <SectionTitle>{title}</SectionTitle>
-      <div className="grid grid-cols-3 gap-2 mt-3">
+      <div className="grid grid-cols-3 gap-3 mt-4">
         <Cell2 label="Income" value={income} positive />
         <Cell2 label="Expenses" value={expenses} />
         <Cell2 label="Net" value={profit} positive={profit >= 0} bold />
@@ -328,9 +456,9 @@ function PeriodCard({ title, income, expenses }: { title: string; income: number
 
 function Cell2({ label, value, positive, bold }: { label: string; value: number; positive?: boolean; bold?: boolean }) {
   return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
-      <div className={`font-display ${bold ? "font-bold text-lg" : "font-semibold text-base"} ${positive ? "text-emerald-700" : "text-primary"}`}>
+    <div className="min-w-0">
+      <div className="text-[10px] font-semibold text-muted-foreground tracking-wide mb-1">{label}</div>
+      <div className={`font-display truncate ${bold ? "font-bold text-base md:text-lg" : "font-semibold text-sm md:text-base"} ${positive ? "text-emerald-600" : "text-primary"}`}>
         {fmt(value)}
       </div>
     </div>
@@ -338,15 +466,31 @@ function Cell2({ label, value, positive, bold }: { label: string; value: number;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground">{children}</h3>;
+  return <h3 className="font-display font-semibold text-[13px] text-muted-foreground">{children}</h3>;
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
-      <Skeleton className="h-10 w-64" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
-      <Skeleton className="h-64" />
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl mx-auto space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1.5">
+          <Skeleton className="h-8 w-44" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <Skeleton className="h-9 w-32 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[88px] rounded-2xl" />)}
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:gap-4">
+        <Skeleton className="h-20 rounded-2xl" />
+        <Skeleton className="h-20 rounded-2xl" />
+      </div>
+      <Skeleton className="h-72 rounded-2xl" />
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Skeleton className="h-64 rounded-2xl" />
+        <Skeleton className="h-64 rounded-2xl" />
+      </div>
     </div>
   );
 }
