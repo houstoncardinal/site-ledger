@@ -1,42 +1,103 @@
-export type ProjectStatus = "active" | "completed";
+export type ProjectStatus = "active" | "completed" | "archived";
 
-export type ExpenseType = "labor" | "materials" | "equipment" | "expense" | "other";
+export type ExpenseCategory =
+  | "labor"
+  | "materials"
+  | "equipment"
+  | "subcontractor"
+  | "cogs"
+  | "operating"
+  | "other";
+
+export type PaymentStatus = "paid" | "unpaid" | "partial";
+export type AccountType = "cash" | "bank" | "credit_card";
 
 export interface Project {
   id: string;
   name: string;
-  startDate: string;
-  budget?: number;
+  project_number: string | null;
+  client_name: string | null;
+  address: string | null;
+  start_date: string;
+  budget: number | null;
   status: ProjectStatus;
-  createdAt: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  starting_balance: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  default_category: ExpenseCategory | null;
+  created_at: string;
 }
 
 export interface Expense {
   id: string;
-  projectId: string;
-  projectName: string;
+  project_id: string | null;
+  account_id: string | null;
   date: string;
-  type: ExpenseType;
+  category: ExpenseCategory;
   vendor: string;
-  description: string;
+  description: string | null;
   amount: number;
-  paymentMethod: string;
-  receiptUrl?: string;
-  notes?: string;
-  // type-specific
-  hours?: number;
-  rate?: number;
-  quantity?: number;
-  unitPrice?: number;
-  createdAt: string;
+  payment_method: string | null;
+  payment_status: PaymentStatus;
+  due_date: string | null;
+  receipt_url: string | null;
+  notes: string | null;
+  hours: number | null;
+  rate: number | null;
+  quantity: number | null;
+  unit_price: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export const EXPENSE_LABELS: Record<ExpenseType, string> = {
-  expense: "Expense",
+export interface Income {
+  id: string;
+  project_id: string | null;
+  account_id: string | null;
+  date: string;
+  client_name: string | null;
+  description: string | null;
+  invoice_number: string | null;
+  amount: number;
+  payment_status: PaymentStatus;
+  due_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   labor: "Labor",
   materials: "Materials",
   equipment: "Equipment",
-  other: "Other Cost",
+  subcontractor: "Subcontractor",
+  cogs: "Cost of Goods",
+  operating: "Operating",
+  other: "Other",
+};
+
+export const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
+  labor: "hsl(38 92% 50%)",
+  materials: "hsl(217 91% 55%)",
+  equipment: "hsl(142 70% 40%)",
+  subcontractor: "hsl(280 70% 55%)",
+  cogs: "hsl(0 84% 50%)",
+  operating: "hsl(190 80% 45%)",
+  other: "hsl(0 0% 35%)",
 };
 
 export const PAYMENT_METHODS = [
@@ -48,3 +109,9 @@ export const PAYMENT_METHODS = [
   "ACH",
   "Other",
 ];
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  cash: "Cash",
+  bank: "Bank Account",
+  credit_card: "Credit Card",
+};
