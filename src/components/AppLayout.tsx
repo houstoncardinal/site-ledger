@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, Plus, Receipt } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Plus, Receipt, Wallet } from "lucide-react";
 import { useState } from "react";
 import QuickAddSheet from "./QuickAddSheet";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/transactions", label: "Transactions", icon: Receipt },
+  { to: "/accounts", label: "Accounts", icon: Wallet },
 ];
 
 export default function AppLayout() {
@@ -61,7 +62,7 @@ export default function AppLayout() {
       </aside>
 
       {/* Mobile top bar */}
-      <header className="md:hidden bg-surface-dark text-surface-dark-foreground p-4 flex items-center justify-between border-b border-white/10">
+      <header className="md:hidden bg-surface-dark text-surface-dark-foreground p-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-30">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-md bg-gradient-primary flex items-center justify-center font-display font-bold text-white text-sm">
             B
@@ -69,7 +70,7 @@ export default function AppLayout() {
           <span className="font-display font-bold">BuildLedger</span>
         </div>
         <div className="text-xs uppercase tracking-wider text-white/60">
-          {loc.pathname === "/" ? "Dashboard" : loc.pathname.slice(1)}
+          {loc.pathname === "/" ? "Dashboard" : loc.pathname.split("/")[1]}
         </div>
       </header>
 
@@ -79,23 +80,9 @@ export default function AppLayout() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 bg-surface-dark border-t border-white/10 z-40">
-        <div className="grid grid-cols-4 relative">
-          {nav.slice(0, 2).map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex flex-col items-center justify-center py-3 text-xs gap-1",
-                  isActive ? "text-primary" : "text-white/60"
-                )
-              }
-            >
-              <n.icon className="w-5 h-5" />
-              {n.label}
-            </NavLink>
-          ))}
+        <div className="grid grid-cols-5 relative">
+          <BottomLink to="/" end icon={LayoutDashboard} label="Home" />
+          <BottomLink to="/projects" icon={FolderKanban} label="Projects" />
           <button
             onClick={() => setOpen(true)}
             className="flex flex-col items-center justify-center -mt-6"
@@ -105,22 +92,30 @@ export default function AppLayout() {
               <Plus className="w-6 h-6" />
             </span>
           </button>
-          <NavLink
-            to="/transactions"
-            className={({ isActive }) =>
-              cn(
-                "flex flex-col items-center justify-center py-3 text-xs gap-1",
-                isActive ? "text-primary" : "text-white/60"
-              )
-            }
-          >
-            <Receipt className="w-5 h-5" />
-            Logs
-          </NavLink>
+          <BottomLink to="/transactions" icon={Receipt} label="Logs" />
+          <BottomLink to="/accounts" icon={Wallet} label="Accounts" />
         </div>
       </nav>
 
       <QuickAddSheet open={open} onOpenChange={setOpen} />
     </div>
+  );
+}
+
+function BottomLink({ to, end, icon: Icon, label }: any) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          "flex flex-col items-center justify-center py-3 text-[10px] gap-1",
+          isActive ? "text-primary" : "text-white/60"
+        )
+      }
+    >
+      <Icon className="w-5 h-5" />
+      {label}
+    </NavLink>
   );
 }
