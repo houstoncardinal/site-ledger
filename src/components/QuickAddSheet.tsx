@@ -38,7 +38,8 @@ export default function QuickAddSheet({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const projects = useStore((s) => s.projects.filter((p) => p.status === "active"));
+  const allProjects = useStore((s) => s.projects);
+  const projects = useMemo(() => allProjects.filter((p) => p.status === "active"), [allProjects]);
   const addExpense = useStore((s) => s.addExpense);
 
   const [step, setStep] = useState<"pick" | "form">("pick");
