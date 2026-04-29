@@ -13,8 +13,27 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['"Space Grotesk"', 'Inter', 'sans-serif'],
+      },
+      backgroundImage: {
+        'gradient-primary': 'var(--gradient-primary)',
+        'gradient-dark': 'var(--gradient-dark)',
+        'gradient-subtle': 'var(--gradient-subtle)',
+      },
+      boxShadow: {
+        'red': 'var(--shadow-red)',
+        'elegant': 'var(--shadow-lg)',
+      },
       colors: {
         border: "hsl(var(--border))",
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        'surface-dark': {
+          DEFAULT: "hsl(var(--surface-dark))",
+          foreground: "hsl(var(--surface-dark-foreground))",
+        },
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
