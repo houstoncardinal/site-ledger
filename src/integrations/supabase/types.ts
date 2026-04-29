@@ -14,7 +14,246 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      accounts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          starting_balance: number
+          type: Database["public"]["Enums"]["account_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          starting_balance?: number
+          type: Database["public"]["Enums"]["account_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          starting_balance?: number
+          type?: Database["public"]["Enums"]["account_type"]
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          date: string
+          description: string | null
+          due_date: string | null
+          hours: number | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          project_id: string | null
+          quantity: number | null
+          rate: number | null
+          receipt_url: string | null
+          unit_price: number | null
+          updated_at: string
+          vendor: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          date?: string
+          description?: string | null
+          due_date?: string | null
+          hours?: number | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          project_id?: string | null
+          quantity?: number | null
+          rate?: number | null
+          receipt_url?: string | null
+          unit_price?: number | null
+          updated_at?: string
+          vendor: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          date?: string
+          description?: string | null
+          due_date?: string | null
+          hours?: number | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          project_id?: string | null
+          quantity?: number | null
+          rate?: number | null
+          receipt_url?: string | null
+          unit_price?: number | null
+          updated_at?: string
+          vendor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incomes: {
+        Row: {
+          account_id: string | null
+          amount: number
+          client_name: string | null
+          created_at: string
+          date: string
+          description: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          client_name?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          client_name?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incomes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incomes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          address: string | null
+          budget: number | null
+          client_name: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          project_number: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["project_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          budget?: number | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          project_number?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          budget?: number | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          project_number?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          created_at: string
+          default_category:
+            | Database["public"]["Enums"]["expense_category"]
+            | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          default_category?:
+            | Database["public"]["Enums"]["expense_category"]
+            | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          default_category?:
+            | Database["public"]["Enums"]["expense_category"]
+            | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +262,17 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      account_type: "cash" | "bank" | "credit_card"
+      expense_category:
+        | "labor"
+        | "materials"
+        | "equipment"
+        | "subcontractor"
+        | "cogs"
+        | "operating"
+        | "other"
+      payment_status: "paid" | "unpaid" | "partial"
+      project_status: "active" | "completed" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +399,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      account_type: ["cash", "bank", "credit_card"],
+      expense_category: [
+        "labor",
+        "materials",
+        "equipment",
+        "subcontractor",
+        "cogs",
+        "operating",
+        "other",
+      ],
+      payment_status: ["paid", "unpaid", "partial"],
+      project_status: ["active", "completed", "archived"],
+    },
   },
 } as const
