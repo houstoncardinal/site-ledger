@@ -13,6 +13,7 @@ import { useExpenses, useIncomes, useProject } from "@/lib/hooks";
 import { calcProjectInsights, exportToCSV } from "@/lib/insights";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { TerminalChartContainer, TerminalSharedTooltip } from "@/components/ui/chart";
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -145,16 +146,16 @@ export default function ProjectDetail() {
         <div className="stat-card">
           <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground">Cash Flow</h3>
           <div className="h-72 mt-3">
-            <ResponsiveContainer>
-              <LineChart data={timeline}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v / 1000}k`} />
-                <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
-                <Line type="monotone" dataKey="expenses" stroke="hsl(0 84% 50%)" strokeWidth={2.5} dot={{ r: 3 }} name="Expenses" />
-                <Line type="monotone" dataKey="income" stroke="hsl(142 70% 40%)" strokeWidth={2.5} dot={{ r: 3 }} name="Income" />
+            <TerminalChartContainer config={{ expenses: { label: "Expenses" }, income: { label: "Income" } }} className="h-full">
+              <LineChart data={timeline} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="4 6" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={46} />
+                <TerminalSharedTooltip />
+                <Line type="monotone" dataKey="expenses" stroke="hsl(0 84% 55%)" strokeWidth={2.5} dot={false} name="Expenses" />
+                <Line type="monotone" dataKey="income" stroke="hsl(142 70% 45%)" strokeWidth={2.5} dot={false} name="Income" />
               </LineChart>
-            </ResponsiveContainer>
+            </TerminalChartContainer>
           </div>
         </div>
       </div>

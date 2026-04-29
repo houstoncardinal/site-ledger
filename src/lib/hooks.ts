@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { accountsApi, expensesApi, incomesApi, projectsApi, vendorsApi } from "./api";
 import { toast } from "sonner";
-import type { Expense, Income, Project, Account } from "./types";
+import type { Expense, Income, Project, Account, Vendor } from "./types";
 import { queueAdd } from "./offlineQueue";
 
 export const useProjects = () =>
@@ -25,6 +25,30 @@ export const useVendors = () =>
 const invalidate = (qc: ReturnType<typeof useQueryClient>, ...keys: string[]) =>
   keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 
+export const useUpdateVendor = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...v }: Partial<Vendor> & { id: string }) => vendorsApi.update(id, v),
+    onSuccess: () => {
+      invalidate(qc, "vendors");
+      toast.success("Vendor updated");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+};
+
+export const useDeleteVendor = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => vendorsApi.delete(id),
+    onSuccess: () => {
+      invalidate(qc, "vendors");
+      toast.success("Vendor deleted");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+};
+
 export const useCreateProject = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -39,6 +63,18 @@ export const useUpdateProject = () => {
   return useMutation({
     mutationFn: ({ id, ...p }: Partial<Project> & { id: string }) => projectsApi.update(id, p),
     onSuccess: () => invalidate(qc, "projects"),
+    onError: (e: any) => toast.error(e.message),
+  });
+};
+
+export const useDeleteProject = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => projectsApi.delete(id),
+    onSuccess: () => {
+      invalidate(qc, "projects");
+      toast.success("Project deleted");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 };

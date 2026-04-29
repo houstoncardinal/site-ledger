@@ -5,8 +5,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import Vendors from "./pages/Vendors";
+import VendorDetail from "./pages/VendorDetail";
 import Transactions from "./pages/Transactions";
 import Accounts from "./pages/Accounts";
 import Receipts from "./pages/Receipts";
@@ -24,8 +27,11 @@ const App = () => (
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
+            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/vendors/:id" element={<VendorDetail />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/receipts" element={<Receipts />} />
             <Route path="/analytics" element={<Analytics />} />

@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* ─── Core Palette ─── */
-    --background: 0 0% 97%;
+    --background: 210 40% 98%;
     --foreground: 0 0% 9%;
 
     --card: 0 0% 100%;
@@ -24,8 +24,8 @@
     --secondary: 0 0% 11%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 95%;
-    --muted-foreground: 0 0% 44%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 40%;
 
     --accent: 0 0% 95%;
     --accent-foreground: 0 0% 9%;
@@ -36,8 +36,8 @@
     --success: 145 65% 38%;
     --warning: 38 90% 48%;
 
-    --border: 0 0% 91%;
-    --input: 0 0% 93%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 0 82% 48%;
 
     --radius: 0.75rem;
@@ -147,6 +147,13 @@
     border: 1px solid hsl(var(--border) / 0.5);
   }
 
+  /* Enterprise polish: subtle gradient + crisp border */
+  .stat-card,
+  .metric-card {
+    background-image: var(--gradient-card);
+    border: 1px solid hsl(var(--border) / 0.65);
+  }
+
   /* ─── Brand gradient button ─── */
   .btn-primary {
     @apply bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] text-white font-semibold;
@@ -205,6 +212,18 @@
   }
   .animate-fade-in {
     animation: fadeIn 0.15s ease both;
+  }
+
+  /* Safe area helpers (iOS) */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+
+  /* Slightly nicer tap feedback for interactive elements */
+  .tap {
+    transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .tap:active {
+    transform: scale(0.98);
   }
 }
 

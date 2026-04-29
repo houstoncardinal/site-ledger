@@ -5,18 +5,24 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Archive, ArrowUpRight, AlertTriangle } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useCreateProject, useExpenses, useIncomes, useProjects, useUpdateProject } from "@/lib/hooks";
+import { Plus, Archive, ArrowUpRight, AlertTriangle, Trash2, Recycle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useCreateProject, useDeleteProject, useExpenses, useIncomes, useProjects, useUpdateProject } from "@/lib/hooks";
 import { calcProjectInsights } from "@/lib/insights";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Projects() {
+  const nav = useNavigate();
   const { data: projects = [] } = useProjects();
   const { data: expenses = [] } = useExpenses();
   const { data: incomes = [] } = useIncomes();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -29,7 +35,7 @@ export default function Projects() {
 
   const submit = async () => {
     if (!form.name.trim()) return toast.error("Project name required");
-    await createProject.mutateAsync({
+    const created = await createProject.mutateAsync({
       name: form.name.trim(),
       client_name: form.client_name.trim() || null,
       address: form.address.trim() || null,
@@ -39,10 +45,12 @@ export default function Projects() {
     });
     setOpen(false);
     setForm({ name: "", client_name: "", address: "", start_date: new Date().toISOString().slice(0, 10), budget: "" });
+    if (created?.id) nav(`/projects/${created.id}`);
   };
 
   const active = projects.filter((p) => p.status === "active");
-  const completed = projects.filter((p) => p.status !== "active");
+  const completed = projects.filter((p) => p.status === "completed");
+  const archived = projects.filter((p) => p.status === "archived");
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -85,16 +93,57 @@ export default function Projects() {
         </Dialog>
       </div>
 
-      <Section title="Active" projects={active} expenses={expenses} incomes={incomes}
-        onArchive={(id) => updateProject.mutate({ id, status: "completed" })} />
+      <Section
+        title="Active"
+        projects={active}
+        expenses={expenses}
+        incomes={incomes}
+        onComplete={(id) => updateProject.mutate({ id, status: "completed" })}
+        onArchive={(id) => updateProject.mutate({ id, status: "archived" })}
+        onDelete={(id) => deleteProject.mutate(id)}
+        busy={updateProject.isPending || deleteProject.isPending}
+      />
       {completed.length > 0 && (
-        <Section title="Completed" projects={completed} expenses={expenses} incomes={incomes} muted />
+        <Section
+          title="Completed"
+          projects={completed}
+          expenses={expenses}
+          incomes={incomes}
+          muted
+          onArchive={(id) => updateProject.mutate({ id, status: "archived" })}
+          onDelete={(id) => deleteProject.mutate(id)}
+          busy={updateProject.isPending || deleteProject.isPending}
+        />
+      )}
+
+      {archived.length > 0 && (
+        <Section
+          title="Archived"
+          projects={archived}
+          expenses={expenses}
+          incomes={incomes}
+          muted
+          onRestore={(id) => updateProject.mutate({ id, status: "active" })}
+          onDelete={(id) => deleteProject.mutate(id)}
+          busy={updateProject.isPending || deleteProject.isPending}
+        />
       )}
     </div>
   );
 }
 
-function Section({ title, projects, expenses, incomes, onArchive, muted }: any) {
+function Section({
+  title,
+  projects,
+  expenses,
+  incomes,
+  onComplete,
+  onArchive,
+  onRestore,
+  onDelete,
+  muted,
+  busy,
+}: any) {
   if (projects.length === 0) {
     return (
       <div>
@@ -160,12 +209,65 @@ function Section({ title, projects, expenses, incomes, onArchive, muted }: any) 
                 </div>
               )}
               {onArchive && (
-                <button
-                  onClick={() => onArchive(p.id)}
-                  className="mt-3 text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                >
-                  <Archive className="w-3 h-3" /> Mark complete
-                </button>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {onComplete && (
+                    <button
+                      disabled={busy}
+                      onClick={() => onComplete(p.id)}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted transition disabled:opacity-50"
+                    >
+                      <Archive className="w-3.5 h-3.5" /> Mark complete
+                    </button>
+                  )}
+                  {onArchive && (
+                    <button
+                      disabled={busy}
+                      onClick={() => onArchive(p.id)}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted transition disabled:opacity-50"
+                    >
+                      <Recycle className="w-3.5 h-3.5" /> Archive
+                    </button>
+                  )}
+                  {onRestore && (
+                    <button
+                      disabled={busy}
+                      onClick={() => onRestore(p.id)}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted transition disabled:opacity-50"
+                    >
+                      <Recycle className="w-3.5 h-3.5" /> Restore
+                    </button>
+                  )}
+
+                  {onDelete && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          disabled={busy}
+                          className="text-xs text-primary hover:text-primary flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-red-50 transition disabled:opacity-50 ml-auto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete project permanently?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will delete the project and all linked transactions (expenses/income) forever. This cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => onDelete(p.id)}
+                          >
+                            Delete forever
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               )}
             </div>
           );

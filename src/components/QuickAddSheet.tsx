@@ -13,18 +13,22 @@ import {
   CATEGORY_LABELS, ExpenseCategory, PAYMENT_METHODS,
 } from "@/lib/types";
 import {
-  useAccounts, useCreateExpense, useCreateIncome, useProjects, useVendors,
+  useAccounts, useCreateExpense, useCreateIncome, useCreateProject, useProjects, useVendors,
 } from "@/lib/hooks";
 import {
   HardHat, Package, Truck, Receipt as ReceiptIcon, MoreHorizontal,
   ArrowLeft, Check, Camera, DollarSign, Briefcase, Wallet,
   Mic, MicOff, RotateCcw, X, ChevronRight, Repeat2, Sparkles, Loader2,
+  Plus,
 } from "lucide-react";
 import { receiptsApi } from "@/lib/api";
 import { autoCategory } from "@/lib/autoCategorize";
-import { analyzeReceipt, smartCategorize, isAIEnabled, type ReceiptData } from "@/lib/openai";
+import { analyzeReceipt, smartCategorize, isAIEnabled, suggestEntryFromNote, voiceLogAssistant, type ReceiptData } from "@/lib/openai";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +52,16 @@ const CATS: { type: ExpenseCategory; icon: any; color: string }[] = [
   { type: "operating", icon: Wallet, color: "from-cyan-600 to-cyan-800" },
   { type: "other", icon: MoreHorizontal, color: "from-zinc-600 to-zinc-800" },
 ];
+
+const CAT_META: Record<ExpenseCategory, { icon: any; label: string }> = {
+  labor: { icon: HardHat, label: CATEGORY_LABELS.labor },
+  materials: { icon: Package, label: CATEGORY_LABELS.materials },
+  equipment: { icon: Truck, label: CATEGORY_LABELS.equipment },
+  subcontractor: { icon: Briefcase, label: CATEGORY_LABELS.subcontractor },
+  cogs: { icon: ReceiptIcon, label: CATEGORY_LABELS.cogs },
+  operating: { icon: Wallet, label: CATEGORY_LABELS.operating },
+  other: { icon: MoreHorizontal, label: CATEGORY_LABELS.other },
+};
 
 // ─── Persistent last-entry helpers ───────────────────────────────────────────
 
@@ -96,20 +110,108 @@ function useVoice(onResult: (text: string) => void) {
   return { listening, start, stop, supported };
 }
 
+// Ensure only one voice recognizer is active at a time across fields.
+// Without this, tapping mic on Vendor and then Note can cause both fields
+// to update because they each spin up independent recognizers.
+const VOICE_BUS_KEY = "sl_voice_bus_v1";
+
+function stopOtherVoiceSessions() {
+  try {
+    window.dispatchEvent(new CustomEvent(VOICE_BUS_KEY));
+  } catch {
+    // ignore
+  }
+}
+
+function VendorPicker({
+  vendors,
+  value,
+  onPick,
+}: {
+  vendors: { id: string; name: string; default_category: string | null }[];
+  value: string;
+  onPick: (vendorName: string, defaultCategory?: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const top = useMemo(() => {
+    return [...vendors]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 80);
+  }, [vendors]);
+
+  if (vendors.length === 0) {
+    return (
+      <button
+        type="button"
+        className={cn(
+          "h-9 px-3 rounded-xl border border-border/60 bg-background/50",
+          "text-xs font-semibold text-muted-foreground/70",
+        )}
+        disabled
+        aria-label="Pick vendor"
+      >
+        Pick
+      </button>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "h-9 px-3 rounded-xl border border-border/60 bg-background hover:bg-muted",
+            "text-xs font-semibold text-muted-foreground hover:text-foreground transition",
+          )}
+          aria-label="Pick vendor"
+        >
+          Pick
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[320px] max-w-[92vw]" align="end">
+        <Command>
+          <CommandInput placeholder="Search vendors…" />
+          <CommandList>
+            <CommandEmpty>No vendors found.</CommandEmpty>
+            <CommandGroup heading="Vendors">
+              {top.map((v) => (
+                <CommandItem
+                  key={v.id}
+                  value={v.name}
+                  onSelect={() => {
+                    onPick(v.name, v.default_category);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="truncate">{v.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function QuickAddSheet({
-  open, onOpenChange, defaultProjectId,
+  open, onOpenChange, defaultProjectId, initialStep,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultProjectId?: string;
+  initialStep?: "quick" | "camera";
 }) {
   const { data: projects = [] } = useProjects();
   const { data: accounts = [] } = useAccounts();
   const { data: vendors = [] } = useVendors();
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
+  const createProject = useCreateProject();
 
   const activeProjects = useMemo(() => projects.filter((p) => p.status === "active"), [projects]);
   const today = new Date().toISOString().slice(0, 10);
@@ -120,7 +222,10 @@ export default function QuickAddSheet({
   const [step, setStep] = useState<Step>("quick");
   const [category, setCategory] = useState<ExpenseCategory>("materials");
   const [uploading, setUploading] = useState(false);
+  const [cameraReturnStep, setCameraReturnStep] = useState<Step>("quick");
   const [cameraPreview, setCameraPreview] = useState<string | null>(null);
+  const [cameraFile, setCameraFile] = useState<File | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
   const [aiScanning, setAiScanning] = useState(false);
   const [aiResult, setAiResult] = useState<ReceiptData | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -133,7 +238,23 @@ export default function QuickAddSheet({
   const [quickCategory, setQuickCategory] = useState<ExpenseCategory>("materials");
   const [quickVendor, setQuickVendor] = useState("");
   const [quickNote, setQuickNote] = useState("");
+  const [quickReceiptUrl, setQuickReceiptUrl] = useState<string | null>(null);
+  const [quickDate, setQuickDate] = useState(today);
+  const [quickHours, setQuickHours] = useState("");
+  const [quickRate, setQuickRate] = useState("");
+  const [quickQty, setQuickQty] = useState("");
+  const [quickUnitPrice, setQuickUnitPrice] = useState("");
   const [lastEntry, setLastEntry] = useState<LastEntry | null>(null);
+
+  // AI voice assistant (guided)
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantPrompt, setAssistantPrompt] = useState<string | null>(null);
+  const [assistantLastHeard, setAssistantLastHeard] = useState<string | null>(null);
+  const [assistantBusy, setAssistantBusy] = useState(false);
+
+  // Inline “create project”
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [projectName, setProjectName] = useState("");
 
   // Full form state
   const [form, setForm] = useState({
@@ -154,23 +275,96 @@ export default function QuickAddSheet({
   });
 
   // Voice input for quick note and full-form description
+  const quickVendorVoice = useVoice((t) => handleVendorChange(t));
   const quickNoteVoice = useVoice((t) => setQuickNote(t));
+  const assistantVoice = useVoice((t) => {
+    setAssistantLastHeard(t);
+    void runAssistant(t);
+  });
   const descVoice = useVoice((t) => setForm((f) => ({ ...f, description: t })));
   const notesVoice = useVoice((t) => setForm((f) => ({ ...f, notes: t })));
+
+  // Subscribe each voice instance to the global stop event.
+  // This guarantees only one mic button controls listening at a time.
+  useEffect(() => {
+    const handler = () => {
+      quickVendorVoice.stop();
+      quickNoteVoice.stop();
+      assistantVoice.stop();
+      descVoice.stop();
+      notesVoice.stop();
+    };
+    window.addEventListener(VOICE_BUS_KEY, handler as any);
+    return () => window.removeEventListener(VOICE_BUS_KEY, handler as any);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const runAssistant = async (utterance: string) => {
+    const text = utterance.trim();
+    if (!text) return;
+    setAssistantBusy(true);
+    try {
+      if (isAIEnabled()) {
+        const projectNames = projects.map((p) => p.name);
+        const res = await voiceLogAssistant(text, projectNames);
+
+        if (res.mode === "income") setMode("income");
+        if (res.mode === "expense") setMode("expense");
+
+        if (res.amount != null) setQuickAmount(String(res.amount));
+        if (res.vendor) handleVendorChange(res.vendor);
+        if (res.client_name) handleVendorChange(res.client_name);
+        if (res.category) setQuickCategory(res.category);
+        if (res.notes) setQuickNote(res.notes);
+
+        if (res.project) {
+          const match = projects.find((p) => p.name.toLowerCase() === res.project!.toLowerCase());
+          if (match) setQuickProject(match.id);
+        }
+
+        if (res.needs) {
+          setAssistantPrompt(res.needs);
+          toast.message(res.needs);
+        } else {
+          setAssistantPrompt(null);
+          toast.success("AI filled the entry — review and tap Log It");
+        }
+      } else {
+        // No API key: still do a best-effort parse with the local note parser.
+        const s = await suggestEntryFromNote(text);
+        if (s?.amount != null) setQuickAmount(String(s.amount));
+        if (s?.vendor) handleVendorChange(s.vendor);
+        if (s?.category) setQuickCategory(s.category);
+        if (s?.description) setQuickNote(s.description);
+        toast.success("Filled what I could — add the missing fields and log it");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "AI assistant failed");
+    } finally {
+      setAssistantBusy(false);
+    }
+  };
 
   // ── Reset on open ──
   useEffect(() => {
     if (open) {
       const project = defaultProjectId ?? activeProjects[0]?.id ?? "none";
-      setStep("quick");
+      setStep(initialStep === "camera" ? "camera" : "quick");
       setMode("expense");
       setQuickAmount("");
       setQuickProject(project);
       setQuickCategory("materials");
       setQuickVendor("");
       setQuickNote("");
+      setQuickReceiptUrl(null);
+      setQuickDate(today);
+      setQuickHours("");
+      setQuickRate("");
+      setQuickQty("");
+      setQuickUnitPrice("");
       setLastEntry(loadLastEntry());
       setCameraPreview(null);
+      setCameraFile(null);
       setAiResult(null);
       stopCamera();
       setForm((f) => ({
@@ -192,39 +386,106 @@ export default function QuickAddSheet({
   }, [open]);
 
   // ── Camera helpers ──
-  const startCamera = async () => {
+  const requestCameraStream = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 } },
-      });
+      // Try high quality first, then fall back.
+      const constraintsHQ: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: "environment" },
+          // Request high resolution for better OCR/AI extraction.
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+          // Best-effort camera quality knobs (not supported on all devices/browsers)
+          focusMode: "continuous" as any,
+          exposureMode: "continuous" as any,
+          whiteBalanceMode: "continuous" as any,
+        },
+        audio: false,
+      };
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraintsHQ);
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+      }
+
       streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+      setCameraActive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
     } catch {
+      // If camera isn't available (permissions/device), drop into full form.
       setStep("form");
     }
   };
-  const stopCamera = () => { streamRef.current?.getTracks().forEach((t) => t.stop()); streamRef.current = null; };
+
+  const startCamera = async () => {
+    // Attach existing stream if we have one; otherwise do nothing (user can tap Enable Camera).
+    if (streamRef.current && videoRef.current) {
+      try {
+        videoRef.current.srcObject = streamRef.current;
+        await videoRef.current.play();
+        setCameraActive(true);
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCameraActive(false);
+  };
   const capturePhoto = () => {
     if (!videoRef.current) return;
+    // iOS Safari sometimes reports 0x0 until metadata is loaded.
+    // In that case, wait for the video to be ready and retry.
+    if (!videoRef.current.videoWidth || !videoRef.current.videoHeight) {
+      const v = videoRef.current;
+      const retry = () => {
+        v.removeEventListener("loadedmetadata", retry);
+        v.removeEventListener("canplay", retry);
+        // Guard against unmounted/step change
+        if (videoRef.current) capturePhoto();
+      };
+      v.addEventListener("loadedmetadata", retry, { once: true });
+      v.addEventListener("canplay", retry, { once: true });
+      return;
+    }
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext("2d")!.drawImage(videoRef.current, 0, 0);
     stopCamera();
-    setCameraPreview(canvas.toDataURL("image/jpeg", 0.85));
+    setCameraFile(null);
+    // Slightly higher quality for better OCR/AI extraction.
+    setCameraPreview(canvas.toDataURL("image/jpeg", 0.98));
   };
   const confirmCameraPhoto = async () => {
-    if (!cameraPreview) return;
+    if (!cameraPreview && !cameraFile) return;
 
     // Run AI analysis + upload in parallel
     setAiScanning(true);
     setUploading(true);
 
     try {
+      // If user uploaded a file:
+      // - PDFs: upload only, no AI vision
+      // - Images: upload + (optional) AI vision using the preview
+      const isPdf = cameraFile?.type === "application/pdf";
       const [receiptData, uploadUrl] = await Promise.allSettled([
-        isAIEnabled() ? analyzeReceipt(cameraPreview) : Promise.resolve(null),
+        isAIEnabled() && !isPdf && cameraPreview ? analyzeReceipt(cameraPreview) : Promise.resolve(null),
         (async () => {
-          const blob = await (await fetch(cameraPreview)).blob();
+          if (cameraFile) return receiptsApi.upload(cameraFile);
+          // captured photo path
+          const blob = await (await fetch(cameraPreview!)).blob();
           const file = new File([blob], `receipt-${Date.now()}.jpg`, { type: "image/jpeg" });
           return receiptsApi.upload(file);
         })(),
@@ -233,21 +494,20 @@ export default function QuickAddSheet({
       // Apply upload result
       if (uploadUrl.status === "fulfilled") {
         setForm((f) => ({ ...f, receipt_url: uploadUrl.value }));
+        setQuickReceiptUrl(uploadUrl.value);
       }
 
       // Apply AI results
       if (receiptData.status === "fulfilled" && receiptData.value) {
         const ai = receiptData.value;
-        setAiResult(ai);
-        setQuickVendor(ai.vendor ?? "");
-        if (ai.amount) setQuickAmount(String(ai.amount));
-        if (ai.category) setQuickCategory(ai.category);
-        if (ai.date) setForm((f) => ({ ...f, date: ai.date! }));
-        if (ai.payment_method) setForm((f) => ({ ...f, payment_method: ai.payment_method! }));
-        if (ai.description) setQuickNote(ai.description);
-        toast.success("Receipt scanned — fields pre-filled");
+        applyReceiptAI(ai);
+        toast.success("Receipt scanned — review & save");
+
+        // Bring user to the full form so all fields are visible + editable.
+        setStep("form");
       } else {
         if (uploadUrl.status === "fulfilled") toast.success("Receipt attached");
+        setStep(cameraReturnStep);
       }
     } catch (err: any) {
       toast.error(err.message);
@@ -257,10 +517,22 @@ export default function QuickAddSheet({
     }
 
     setCameraPreview(null);
-    setStep("quick");
+    setCameraFile(null);
   };
-  const retakePhoto = () => { setCameraPreview(null); startCamera(); };
-  useEffect(() => { if (step === "camera") startCamera(); return () => stopCamera(); }, [step]); // eslint-disable-line
+  const retakePhoto = () => {
+    setCameraPreview(null);
+    setCameraFile(null);
+    // Re-request stream from a user gesture for maximum compatibility.
+    void requestCameraStream();
+  };
+  
+  useEffect(() => {
+    if (step === "camera") {
+      // Attach an already-requested stream (if any). Otherwise user can tap Enable Camera.
+      void startCamera();
+    }
+    return () => stopCamera();
+  }, [step]); // eslint-disable-line
 
   // ── Auto-categorize while typing vendor (keyword first, AI fallback) ──
   const handleVendorChange = (name: string) => {
@@ -307,15 +579,28 @@ export default function QuickAddSheet({
     setQuickNote(lastEntry.notes);
   };
 
+  const quickComputedAmount = useMemo(() => {
+    if (mode !== "expense") return quickAmount;
+    if (quickCategory === "labor" && quickHours && quickRate) {
+      const a = parseFloat(quickHours) * parseFloat(quickRate);
+      return Number.isFinite(a) ? a.toFixed(2) : quickAmount;
+    }
+    if (quickCategory === "materials" && quickQty && quickUnitPrice) {
+      const a = parseFloat(quickQty) * parseFloat(quickUnitPrice);
+      return Number.isFinite(a) ? a.toFixed(2) : quickAmount;
+    }
+    return quickAmount;
+  }, [mode, quickAmount, quickCategory, quickHours, quickRate, quickQty, quickUnitPrice]);
+
   // ── Quick submit ──
   const submitQuick = async () => {
-    const amount = parseFloat(quickAmount);
+    const amount = parseFloat(quickComputedAmount);
     if (!amount || amount <= 0) return toast.error("Enter a valid amount");
 
     const entry: LastEntry = {
       mode,
       vendor: quickVendor.trim(),
-      amount: quickAmount,
+      amount: quickComputedAmount,
       category: quickCategory,
       project_id: quickProject,
       notes: quickNote.trim(),
@@ -326,21 +611,25 @@ export default function QuickAddSheet({
       await createExpense.mutateAsync({
         project_id: quickProject !== "none" ? quickProject : null,
         account_id: accounts[0]?.id ?? null,
-        date: today,
+        date: quickDate,
         category: quickCategory,
         vendor: quickVendor.trim(),
         description: quickNote.trim() || null,
         amount,
+        hours: quickCategory === "labor" && quickHours ? parseFloat(quickHours) : null,
+        rate: quickCategory === "labor" && quickRate ? parseFloat(quickRate) : null,
+        quantity: quickCategory === "materials" && quickQty ? parseFloat(quickQty) : null,
+        unit_price: quickCategory === "materials" && quickUnitPrice ? parseFloat(quickUnitPrice) : null,
         payment_method: "Credit Card",
         payment_status: "paid",
-        receipt_url: null,
+        receipt_url: quickReceiptUrl,
         notes: null,
       });
     } else {
       await createIncome.mutateAsync({
         project_id: quickProject !== "none" ? quickProject : null,
         account_id: accounts[0]?.id ?? null,
-        date: today,
+        date: quickDate,
         client_name: quickVendor.trim() || null,
         description: quickNote.trim() || null,
         amount,
@@ -366,9 +655,38 @@ export default function QuickAddSheet({
     if (!file) return;
     setUploading(true);
     try {
-      const url = await receiptsApi.upload(file);
-      setForm((f) => ({ ...f, receipt_url: url }));
-      toast.success("Receipt attached");
+      const isPdf = file.type === "application/pdf";
+
+      const [uploadRes, aiRes] = await Promise.allSettled([
+        receiptsApi.upload(file),
+        !isPdf && isAIEnabled()
+          ? new Promise<ReceiptData>((resolve, reject) => {
+              const r = new FileReader();
+              r.onload = async () => {
+                try {
+                  const dataUrl = r.result as string;
+                  const ai = await analyzeReceipt(dataUrl);
+                  resolve(ai);
+                } catch (err) {
+                  reject(err);
+                }
+              };
+              r.onerror = () => reject(new Error("Could not read image"));
+              r.readAsDataURL(file);
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (uploadRes.status === "fulfilled") {
+        setForm((f) => ({ ...f, receipt_url: uploadRes.value }));
+      }
+
+      if (aiRes.status === "fulfilled" && aiRes.value) {
+        applyReceiptAI(aiRes.value);
+        toast.success("Receipt scanned — review & save");
+      } else {
+        toast.success(isPdf ? "PDF attached" : "Receipt attached");
+      }
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -427,13 +745,95 @@ export default function QuickAddSheet({
 
   const pending = createExpense.isPending || createIncome.isPending;
 
+  function normalizePaymentMethod(pm: string | null | undefined): string {
+    if (!pm) return "Credit Card";
+    const s = String(pm).trim();
+    const match = PAYMENT_METHODS.find((m) => m.toLowerCase() === s.toLowerCase());
+    if (match) return match;
+    // Map a few common variants
+    if (/cash/i.test(s)) return "Cash";
+    if (/debit/i.test(s)) return "Debit Card";
+    if (/credit/i.test(s)) return "Credit Card";
+    if (/check/i.test(s)) return "Check";
+    return "Other";
+  }
+
+  function formatReceiptNotes(ai: ReceiptData): string {
+    const parts: string[] = [];
+    if (ai.vendor_address) parts.push(`Address: ${ai.vendor_address}`);
+    if (ai.vendor_phone) parts.push(`Phone: ${ai.vendor_phone}`);
+    if (ai.receipt_number) parts.push(`Receipt #: ${ai.receipt_number}`);
+    if (ai.card_last4) parts.push(`Card: •••• ${ai.card_last4}`);
+    if (ai.subtotal != null || ai.tax != null || ai.tip != null || ai.total != null) {
+      parts.push(
+        `Subtotal: ${ai.subtotal ?? "—"} | Tax: ${ai.tax ?? "—"} | Tip: ${ai.tip ?? "—"} | Total: ${ai.total ?? ai.amount ?? "—"}`,
+      );
+    }
+    if (ai.line_items?.length) {
+      parts.push("Items:");
+      for (const li of ai.line_items.slice(0, 18)) {
+        const qty = li.quantity != null ? `${li.quantity} × ` : "";
+        const unit = li.unit_price != null ? `$${li.unit_price.toFixed(2)}` : "";
+        const total = li.total != null ? `$${li.total.toFixed(2)}` : "";
+        const rhs = [unit, total].filter(Boolean).join(" → ");
+        parts.push(`- ${qty}${li.description}${rhs ? ` (${rhs})` : ""}`);
+      }
+      if (ai.line_items.length > 18) parts.push(`… +${ai.line_items.length - 18} more`);
+    }
+    return parts.join("\n").trim();
+  }
+
+  function applyReceiptAI(ai: ReceiptData) {
+    setAiResult(ai);
+
+    // Receipt capture is for expenses.
+    setMode("expense");
+
+    if (ai.vendor) {
+      handleVendorChange(ai.vendor);
+      setForm((f) => ({ ...f, vendor: ai.vendor ?? "" }));
+    }
+
+    const amount = (typeof ai.total === "number" ? ai.total : (typeof ai.amount === "number" ? ai.amount : null));
+    if (amount != null) {
+      setQuickAmount(String(amount));
+      setForm((f) => ({ ...f, amount: String(amount) }));
+    }
+
+    if (ai.category) {
+      setQuickCategory(ai.category);
+      setCategory(ai.category);
+    }
+    if (ai.date) setForm((f) => ({ ...f, date: ai.date! }));
+    if (ai.payment_method) setForm((f) => ({ ...f, payment_method: normalizePaymentMethod(ai.payment_method) }));
+
+    if (ai.description) {
+      setQuickNote(ai.description);
+      setForm((f) => ({ ...f, description: ai.description ?? "" }));
+    }
+
+    // Put deep receipt details into Notes (reviewable/editable).
+    const receiptNotes = formatReceiptNotes(ai);
+    if (receiptNotes) {
+      setForm((f) => ({ ...f, notes: f.notes ? `${f.notes}\n\n${receiptNotes}` : receiptNotes }));
+    }
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[96vh] sm:max-w-xl sm:mx-auto rounded-t-2xl p-0 flex flex-col">
-        <div className="h-1.5 industrial-stripe rounded-t-2xl" />
+      <SheetContent
+        side="bottom"
+        className={cn(
+          "h-[96vh] sm:max-w-xl sm:mx-auto rounded-t-[28px] p-0 flex flex-col",
+          "border border-black/5",
+          "bg-white shadow-2xl",
+        )}
+      >
+        {/* top spacer (no stripe) */}
+        <div className="h-2" />
 
         {/* Header */}
-        <SheetHeader className="p-5 pb-3 text-left">
+        <SheetHeader className="p-4 pb-2 text-left">
           <SheetTitle className="font-display text-2xl flex items-center gap-3">
             {(step === "form" || step === "pick" || step === "camera") && (
               <button
@@ -450,12 +850,37 @@ export default function QuickAddSheet({
             {step === "quick" && (
               <button
                 onClick={() => setStep("pick")}
-                className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-0.5 hover:text-foreground transition"
+                className={cn(
+                  "hidden sm:inline-flex",
+                  "ml-auto inline-flex items-center gap-1",
+                  "h-9 px-3 rounded-xl",
+                  "bg-emerald-600 hover:bg-emerald-700",
+                  "text-xs font-semibold text-white",
+                  "border border-emerald-700/30",
+                  "shadow-sm hover:shadow transition"
+                )}
               >
-                Advanced <ChevronRight className="w-3 h-3" />
+                Advanced entry <ChevronRight className="w-3.5 h-3.5" />
               </button>
             )}
           </SheetTitle>
+
+          {/* Mobile: keep Advanced entry separate from the sheet close (X) button */}
+          {step === "quick" && (
+            <button
+              onClick={() => setStep("pick")}
+              className={cn(
+                "sm:hidden",
+                "mt-2 w-full inline-flex items-center justify-center gap-2",
+                "h-11 rounded-2xl",
+                "bg-emerald-600 hover:bg-emerald-700",
+                "text-sm font-semibold text-white",
+                "shadow-sm transition",
+              )}
+            >
+              Advanced entry <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
           <SheetDescription className="sr-only">
             {step === "quick" ? "Fast entry — 5 seconds" : "Full entry form"}
           </SheetDescription>
@@ -463,7 +888,7 @@ export default function QuickAddSheet({
 
         {/* ── QUICK MODE ── */}
         {step === "quick" && (
-          <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
             {/* Expense / Income toggle */}
             <div className="flex gap-2">
               <button
@@ -488,64 +913,107 @@ export default function QuickAddSheet({
                 type="number"
                 inputMode="decimal"
                 placeholder="0.00"
-                value={quickAmount}
+                value={quickComputedAmount}
                 onChange={(e) => setQuickAmount(e.target.value)}
                 className="w-full pl-10 pr-4 h-16 text-3xl font-display font-bold bg-muted rounded-xl border-2 border-transparent focus:border-primary outline-none transition"
               />
             </div>
 
-            {/* Project */}
-            {activeProjects.length > 0 && (
+            {/* Project + Category (compact) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Project</label>
-                <div className="flex flex-wrap gap-2">
-                  {activeProjects.slice(0, 4).map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setQuickProject(p.id)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm font-medium transition",
-                        quickProject === p.id
-                          ? "bg-surface-dark text-white"
-                          : "bg-muted text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {p.name}
-                    </button>
-                  ))}
-                  {activeProjects.length > 4 && (
-                    <Select value={quickProject} onValueChange={setQuickProject}>
-                      <SelectTrigger className="h-9 text-sm w-auto"><SelectValue placeholder="More…" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No project</SelectItem>
-                        {activeProjects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Select value={quickProject} onValueChange={setQuickProject}>
+                    <SelectTrigger className="h-11 bg-white border-black/10"><SelectValue placeholder="Project" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No project</SelectItem>
+                      {activeProjects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    type="button"
+                    onClick={() => setProjectOpen(true)}
+                    className={cn(
+                      "h-11 w-11 rounded-2xl shrink-0",
+                      "bg-white",
+                      "border border-black/10",
+                      "text-foreground",
+                      "flex items-center justify-center",
+                      "shadow-sm",
+                      "hover:bg-muted transition",
+                    )}
+                    title="Create project"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Date (Quick Add) */}
+              <div className="space-y-1.5">
+                <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Date</label>
+                <Input
+                  type="date"
+                  value={quickDate}
+                  onChange={(e) => setQuickDate(e.target.value)}
+                  className="h-11 bg-white border-black/10"
+                />
+              </div>
+
+              {mode === "expense" ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Category</label>
+                  <Select value={quickCategory} onValueChange={(v) => setQuickCategory(v as ExpenseCategory)}>
+                    <SelectTrigger className="h-11 bg-white border-black/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map((k) => {
+                        const Icon = CAT_META[k].icon;
+                        return (
+                          <SelectItem key={k} value={k}>
+                            <span className="flex items-center gap-2">
+                              <Icon className="w-4 h-4 text-muted-foreground" />
+                              {CAT_META[k].label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Status</label>
+                  <div className="h-11 rounded-2xl bg-white border border-black/10 flex items-center px-3 text-sm text-muted-foreground">
+                    Paid income
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Category-specific inputs (expense) */}
+            {mode === "expense" && quickCategory === "labor" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Hours</Label>
+                  <Input value={quickHours} onChange={(e) => setQuickHours(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="e.g. 6" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Rate</Label>
+                  <Input value={quickRate} onChange={(e) => setQuickRate(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="$ / hr" />
                 </div>
               </div>
             )}
 
-            {/* Category chips (expense only) */}
-            {mode === "expense" && (
-              <div className="space-y-1.5">
-                <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Category</label>
-                <div className="flex flex-wrap gap-2">
-                  {CATS.map((c) => (
-                    <button
-                      key={c.type}
-                      onClick={() => setQuickCategory(c.type)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition",
-                        quickCategory === c.type
-                          ? `bg-gradient-to-r ${c.color} text-white shadow-sm`
-                          : "bg-muted text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <c.icon className="w-3.5 h-3.5" />
-                      {CATEGORY_LABELS[c.type]}
-                    </button>
-                  ))}
+            {mode === "expense" && quickCategory === "materials" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Quantity</Label>
+                  <Input value={quickQty} onChange={(e) => setQuickQty(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="e.g. 12" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Unit Price</Label>
+                  <Input value={quickUnitPrice} onChange={(e) => setQuickUnitPrice(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="$" />
                 </div>
               </div>
             )}
@@ -553,7 +1021,7 @@ export default function QuickAddSheet({
             {/* Vendor / Client with voice */}
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground flex items-center gap-2">
-                {mode === "income" ? "Client" : "Vendor"} <span className="normal-case font-normal">(optional)</span>
+                {mode === "income" ? "Client" : "Vendor"} <span className="normal-case font-normal">(required)</span>
                 {aiResult?.vendor && (
                   <span className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
                     <Sparkles className="w-2.5 h-2.5" /> AI filled
@@ -565,19 +1033,35 @@ export default function QuickAddSheet({
                   placeholder={mode === "income" ? "Client name" : "e.g. Home Depot"}
                   value={quickVendor}
                   onChange={(e) => handleVendorChange(e.target.value)}
-                  className="h-11 pr-10"
+                  className="h-11 pr-[92px]"
                 />
-                {quickNoteVoice.supported && (
-                  <button
-                    type="button"
-                    onMouseDown={() => quickNoteVoice.listening ? quickNoteVoice.stop() : quickNoteVoice.start()}
-                    className={cn("absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md flex items-center justify-center transition",
-                      quickNoteVoice.listening ? "bg-primary text-white animate-pulse" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {quickNoteVoice.listening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                  </button>
-                )}
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  <VendorPicker
+                    vendors={vendors as any}
+                    value={quickVendor}
+                    onPick={(name, cat) => {
+                      pickVendorSuggestion(name, cat);
+                    }}
+                  />
+                  {quickVendorVoice.supported && (
+                    <button
+                      type="button"
+                      onMouseDown={() => {
+                        stopOtherVoiceSessions();
+                        quickVendorVoice.listening ? quickVendorVoice.stop() : quickVendorVoice.start();
+                      }}
+                      className={cn(
+                        "w-9 h-9 rounded-xl flex items-center justify-center transition",
+                        quickVendorVoice.listening
+                          ? "bg-primary text-white animate-pulse"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
+                      )}
+                      aria-label="Voice input vendor"
+                    >
+                      {quickVendorVoice.listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </button>
+                  )}
+                </div>
               </div>
               {vendorSuggestions.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1">
@@ -610,7 +1094,10 @@ export default function QuickAddSheet({
                 {quickNoteVoice.supported && (
                   <button
                     type="button"
-                    onMouseDown={() => quickNoteVoice.listening ? quickNoteVoice.stop() : quickNoteVoice.start()}
+                    onMouseDown={() => {
+                      stopOtherVoiceSessions();
+                      quickNoteVoice.listening ? quickNoteVoice.stop() : quickNoteVoice.start();
+                    }}
                     className={cn("absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md flex items-center justify-center transition",
                       quickNoteVoice.listening ? "bg-primary text-white animate-pulse" : "text-muted-foreground hover:text-foreground"
                     )}
@@ -623,11 +1110,77 @@ export default function QuickAddSheet({
 
             {/* Receipt shortcut */}
             <button
-              onClick={() => { setStep("camera"); }}
-              className="w-full flex items-center gap-2 h-10 rounded-xl border border-dashed border-muted-foreground/30 text-xs text-muted-foreground hover:border-primary hover:text-primary transition"
+              onClick={() => {
+                setCameraReturnStep("quick");
+                setStep("camera");
+                // Request the camera stream from a user gesture for maximum device compatibility.
+                void requestCameraStream();
+              }}
+              className={cn(
+                "w-full flex items-center gap-2 h-11 rounded-2xl border border-dashed",
+                "text-xs transition bg-white",
+                quickReceiptUrl
+                  ? "border-primary/40 text-primary hover:border-primary"
+                  : "border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary"
+              )}
             >
-              <Camera className="w-3.5 h-3.5 ml-3" /> Add receipt photo
+              <Camera className="w-3.5 h-3.5 ml-3" />
+              {quickReceiptUrl ? "Receipt attached — tap to replace" : "Scan / upload receipt"}
+              {quickReceiptUrl && (
+                <span className="ml-auto mr-3 text-[10px] font-semibold bg-primary/10 text-primary px-2 py-1 rounded-full">
+                  Attached
+                </span>
+              )}
             </button>
+
+            {/* AI Voice Assistant */}
+            <Collapsible open={assistantOpen} onOpenChange={setAssistantOpen}>
+              <div className="rounded-2xl border border-black/5 bg-white p-3 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className="text-left min-w-0">
+                      <div className="text-xs font-semibold tracking-wide text-muted-foreground">AI Voice Assistant</div>
+                      <div className="font-display font-bold mt-0.5 text-sm">Speak to fill this {mode === "income" ? "income" : "expense"}.</div>
+                    </button>
+                  </CollapsibleTrigger>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopOtherVoiceSessions();
+                      assistantVoice.listening ? assistantVoice.stop() : assistantVoice.start();
+                    }}
+                    className={cn(
+                      "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0",
+                      assistantBusy ? "bg-muted" : "bg-surface-dark",
+                      assistantVoice.listening ? "ring-2 ring-primary" : "",
+                    )}
+                    aria-label="Talk to AI"
+                    disabled={assistantBusy}
+                  >
+                    {assistantBusy ? <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" /> : assistantVoice.listening ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
+                  </button>
+                </div>
+
+                <CollapsibleContent>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Example: {mode === "income"
+                      ? "“ACME Homes, 2,500 dollars, Riverside project invoice 1042”"
+                      : "“Home Depot, 186 dollars, materials for Riverside project”"}
+                  </div>
+                  {assistantPrompt && (
+                    <div className="mt-2 text-xs font-semibold text-primary bg-primary/10 px-2.5 py-2 rounded-xl">
+                      {assistantPrompt}
+                    </div>
+                  )}
+                  {assistantLastHeard && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Heard: <span className="font-medium text-foreground">{assistantLastHeard}</span>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
 
             {/* Repeat last entry */}
             {lastEntry && (
@@ -651,14 +1204,28 @@ export default function QuickAddSheet({
             <div className="grid grid-cols-2 gap-3 mb-4">
               <button
                 onClick={() => { setMode("income"); setStep("form"); }}
-                className="aspect-[2.2/1] rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white p-4 flex flex-col justify-between text-left shadow-md active:scale-95 transition"
+                className={cn(
+                  "aspect-[2.2/1] rounded-2xl",
+                  "bg-emerald-600",
+                  "text-white p-4 flex flex-col justify-between text-left",
+                  "shadow-sm border border-emerald-700/30",
+                  "hover:bg-emerald-700",
+                  "active:scale-95 transition",
+                )}
               >
                 <DollarSign className="w-7 h-7" />
                 <div><div className="font-display font-bold text-lg">Income</div><div className="text-xs text-white/80">Client payment</div></div>
               </button>
               <button
                 onClick={() => { setMode("expense"); setCategory("other"); setStep("form"); }}
-                className="aspect-[2.2/1] rounded-xl bg-gradient-to-br from-primary to-primary-glow text-white p-4 flex flex-col justify-between text-left shadow-red active:scale-95 transition"
+                className={cn(
+                  "aspect-[2.2/1] rounded-2xl",
+                  "bg-surface-dark",
+                  "text-white p-4 flex flex-col justify-between text-left",
+                  "shadow-sm border border-black/10",
+                  "hover:opacity-95",
+                  "active:scale-95 transition",
+                )}
               >
                 <ReceiptIcon className="w-7 h-7" />
                 <div><div className="font-display font-bold text-lg">Expense</div><div className="text-xs text-white/80">Generic cost</div></div>
@@ -671,16 +1238,31 @@ export default function QuickAddSheet({
                 <button
                   key={t.type}
                   onClick={() => { setMode("expense"); setCategory(t.type); setStep("form"); }}
-                  className={cn("aspect-square rounded-xl bg-gradient-to-br text-white p-3 flex flex-col justify-between text-left shadow-md active:scale-95 transition", t.color)}
+                  className={cn(
+                    "aspect-square rounded-2xl",
+                    "bg-surface-dark",
+                    "text-white p-3 flex flex-col justify-between text-left",
+                    "shadow-sm border border-black/10",
+                    "hover:opacity-95",
+                    "active:scale-95 transition",
+                  )}
                 >
-                  <t.icon className="w-6 h-6" />
+                  <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
+                    <t.icon className="w-5 h-5" />
+                  </div>
                   <div className="font-display font-bold text-sm leading-tight">{CATEGORY_LABELS[t.type]}</div>
                 </button>
               ))}
             </div>
 
             <button
-              onClick={() => { setMode("expense"); setCategory("other"); setStep("camera"); }}
+              onClick={() => {
+                setMode("expense");
+                setCategory("other");
+                setCameraReturnStep("pick");
+                setStep("camera");
+                void requestCameraStream();
+              }}
               className="mt-4 w-full flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition text-sm font-medium"
             >
               <Camera className="w-4 h-4" /> Start with a Receipt
@@ -701,14 +1283,14 @@ export default function QuickAddSheet({
                         <Sparkles className="w-7 h-7 text-white animate-pulse" />
                       </div>
                       <p className="text-white font-semibold text-sm">AI scanning receipt…</p>
-                      <p className="text-white/60 text-xs">Extracting amount, vendor & category</p>
+                      <p className="text-white/60 text-xs">Extracting vendor, address, date, totals & line items</p>
                     </div>
                   )}
                 </div>
                 {isAIEnabled() && !aiScanning && (
                   <div className="px-5 pt-3 flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <p className="text-xs text-muted-foreground">AI will auto-fill amount, vendor, date & category from this receipt</p>
+                    <p className="text-xs text-muted-foreground">AI will auto-fill vendor, address, date, totals, payment method and line items</p>
                   </div>
                 )}
                 <div className="p-5 flex gap-3 border-t border-border bg-card">
@@ -738,26 +1320,77 @@ export default function QuickAddSheet({
                   </div>
                 </div>
                 <div className="p-5 flex items-center justify-between border-t border-border bg-card">
-                  <label className="w-12 h-12 rounded-full bg-muted flex items-center justify-center cursor-pointer">
-                    <ReceiptIcon className="w-5 h-5 text-muted-foreground" />
-                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      stopCamera();
-                      const reader = new FileReader();
-                      reader.onload = (ev) => setCameraPreview(ev.target?.result as string);
-                      reader.readAsDataURL(file);
-                    }} />
-                  </label>
-                  <button
-                    onClick={capturePhoto}
-                    className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 transition active:scale-90 flex items-center justify-center"
+                  {/* Upload: PDF/JPG/PNG */}
+                  <label
+                    className="w-12 h-12 rounded-full bg-muted flex items-center justify-center cursor-pointer"
+                    title="Upload photo or PDF"
                   >
-                    <div className="w-12 h-12 rounded-full bg-white" />
-                  </button>
+                    <ReceiptIcon className="w-5 h-5 text-muted-foreground" />
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        // Stop live camera if active.
+                        stopCamera();
+
+                        // PDFs: upload immediately (no preview/AI vision)
+                        if (file.type === "application/pdf") {
+                          setUploading(true);
+                          try {
+                            const url = await receiptsApi.upload(file);
+                            setForm((f) => ({ ...f, receipt_url: url }));
+                            setQuickReceiptUrl(url);
+                            toast.success("PDF attached");
+                            setStep(cameraReturnStep);
+                          } catch (err: any) {
+                            toast.error(err.message);
+                          } finally {
+                            setUploading(false);
+                          }
+                          return;
+                        }
+
+                        // Images: show preview, allow AI scan
+                        setCameraFile(file);
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setCameraPreview(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+
+                  {/* Camera action */}
+                  {!cameraActive ? (
+                    <button
+                      onClick={() => void requestCameraStream()}
+                      className="flex-1 mx-4 h-12 rounded-2xl bg-surface-dark text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition"
+                    >
+                      <Camera className="w-4 h-4" /> Enable camera
+                    </button>
+                  ) : (
+                    <button
+                      onClick={capturePhoto}
+                      className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 transition active:scale-90 flex items-center justify-center"
+                      title="Take photo"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-white" />
+                    </button>
+                  )}
+
+                  {/* Fallback to manual form */}
                   <button
-                    onClick={() => { stopCamera(); setCameraPreview(null); setStep("form"); }}
+                    onClick={() => {
+                      stopCamera();
+                      setCameraPreview(null);
+                      setCameraFile(null);
+                      setStep("form");
+                    }}
                     className="w-12 h-12 rounded-full bg-muted flex items-center justify-center"
+                    title="Skip camera"
                   >
                     <X className="w-5 h-5 text-muted-foreground" />
                   </button>
@@ -906,7 +1539,10 @@ export default function QuickAddSheet({
                 {descVoice.supported && (
                   <button
                     type="button"
-                    onMouseDown={() => descVoice.listening ? descVoice.stop() : descVoice.start()}
+                    onMouseDown={() => {
+                      stopOtherVoiceSessions();
+                      descVoice.listening ? descVoice.stop() : descVoice.start();
+                    }}
                     className={cn("absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md flex items-center justify-center transition",
                       descVoice.listening ? "bg-primary text-white animate-pulse" : "text-muted-foreground hover:text-foreground"
                     )}
@@ -922,8 +1558,60 @@ export default function QuickAddSheet({
                 <label className="flex items-center justify-center gap-2 h-12 border border-dashed rounded-md cursor-pointer hover:border-primary hover:text-primary transition text-sm">
                   <Camera className="w-4 h-4" />
                   {uploading ? "Uploading…" : form.receipt_url ? "✓ Receipt attached" : "Tap to capture or upload"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceipt} />
+                  <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handleReceipt} />
                 </label>
+
+                {aiResult && (
+                  <div className="mt-3 rounded-2xl border border-black/5 bg-white/65 backdrop-blur-xl p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold tracking-wide text-muted-foreground">AI extracted</div>
+                        <div className="font-display font-bold mt-1 truncate">{aiResult.vendor ?? "Vendor"}</div>
+                        {aiResult.vendor_address && (
+                          <div className="text-xs text-muted-foreground mt-1 truncate">{aiResult.vendor_address}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(aiResult.date ?? form.date) && <span>{aiResult.date ?? form.date}</span>}
+                          {(aiResult.payment_method || aiResult.card_last4) && (
+                            <span>
+                              {" "}· {aiResult.payment_method ?? ""}{aiResult.card_last4 ? ` •••• ${aiResult.card_last4}` : ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total</div>
+                        <div className="font-display font-bold text-lg text-foreground">
+                          ${Number(aiResult.total ?? aiResult.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {aiResult.line_items?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Line items</div>
+                        <div className="mt-2 space-y-1 max-h-40 overflow-auto pr-1">
+                          {aiResult.line_items.slice(0, 12).map((li, idx) => (
+                            <div key={idx} className="flex items-start justify-between gap-3 text-xs">
+                              <div className="min-w-0">
+                                <div className="truncate text-foreground/90">{li.description || "Item"}</div>
+                                <div className="text-muted-foreground">
+                                  {li.quantity != null ? `${li.quantity}×` : ""} {li.unit_price != null ? `$${li.unit_price.toFixed(2)}` : ""}
+                                </div>
+                              </div>
+                              <div className="font-mono tabular-nums text-foreground/90">
+                                {li.total != null ? `$${li.total.toFixed(2)}` : ""}
+                              </div>
+                            </div>
+                          ))}
+                          {aiResult.line_items.length > 12 && (
+                            <div className="text-xs text-muted-foreground">+{aiResult.line_items.length - 12} more…</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Field>
             )}
 
@@ -940,7 +1628,10 @@ export default function QuickAddSheet({
                 {notesVoice.supported && (
                   <button
                     type="button"
-                    onMouseDown={() => notesVoice.listening ? notesVoice.stop() : notesVoice.start()}
+                    onMouseDown={() => {
+                      stopOtherVoiceSessions();
+                      notesVoice.listening ? notesVoice.stop() : notesVoice.start();
+                    }}
                     className={cn("absolute right-2 top-2 w-7 h-7 rounded-md flex items-center justify-center transition",
                       notesVoice.listening ? "bg-primary text-white animate-pulse" : "text-muted-foreground hover:text-foreground"
                     )}
@@ -991,6 +1682,46 @@ export default function QuickAddSheet({
             </Button>
           </div>
         )}
+
+        {/* Inline Create Project dialog */}
+        <Sheet open={projectOpen} onOpenChange={setProjectOpen}>
+          <SheetContent side="bottom" className="h-[60vh] sm:max-w-xl sm:mx-auto rounded-t-2xl">
+            <SheetHeader className="text-left">
+              <SheetTitle className="font-display text-2xl">Create Project</SheetTitle>
+              <SheetDescription>Make a project now, then keep logging.</SheetDescription>
+            </SheetHeader>
+            <div className="mt-4 space-y-3">
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Project Name</Label>
+                <Input
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="e.g. Riverside Tower"
+                  className="h-11 mt-1.5"
+                />
+              </div>
+              <Button
+                disabled={!projectName.trim() || createProject.isPending}
+                className="w-full h-11 bg-gradient-primary shadow-red"
+                onClick={async () => {
+                  const name = projectName.trim();
+                  if (!name) return;
+                  try {
+                    const created = await createProject.mutateAsync({ name, status: "active" } as any);
+                    setProjectName("");
+                    setProjectOpen(false);
+                    if (created?.id) setQuickProject(created.id);
+                    toast.success("Project created");
+                  } catch {
+                    // handled in hook
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" /> Create Project
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </SheetContent>
     </Sheet>
   );

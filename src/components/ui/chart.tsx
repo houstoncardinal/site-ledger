@@ -58,6 +58,37 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+/**
+ * “Trading terminal” preset for charts: denser layout, darker surface, sharper border,
+ * slightly larger hit targets. Use this for Dashboard/Analytics to make charts feel premium.
+ */
+const TerminalChartContainer = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & {
+    config: ChartConfig;
+    children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>["children"];
+  }
+>(({ className, ...props }, ref) => {
+  return (
+    <ChartContainer
+      ref={ref}
+      className={cn(
+        "aspect-auto w-full",
+        "rounded-2xl border border-white/10 bg-[linear-gradient(180deg,hsl(240_10%_10%),hsl(240_10%_7%))] p-3 md:p-4",
+        "text-[11px]",
+        // Recharts overrides
+        "[&_.recharts-cartesian-grid_line]:stroke-white/10",
+        "[&_.recharts-text]:fill-white/70",
+        "[&_.recharts-legend-item-text]:!text-white/70",
+        "[&_.recharts-tooltip-cursor]:fill-white/5",
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+TerminalChartContainer.displayName = "TerminalChartContainer";
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
@@ -225,6 +256,81 @@ const ChartTooltipContent = React.forwardRef<
 );
 ChartTooltipContent.displayName = "ChartTooltip";
 
+/** Terminal tooltip variant (dark, glassy) */
+const TerminalTooltipContent = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<typeof ChartTooltipContent>
+>(({ className, ...props }, ref) => {
+  return (
+    <ChartTooltipContent
+      ref={ref}
+      className={cn(
+        "border-white/10 bg-black/60 text-white backdrop-blur-xl",
+        "shadow-2xl shadow-black/40",
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+TerminalTooltipContent.displayName = "TerminalTooltipContent";
+
+/** Shared tooltip helper for multi-series line charts */
+function defaultCurrencyFormatter(v: any) {
+  const n = typeof v === "number" ? v : Number(v);
+  if (Number.isFinite(n)) {
+    return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  }
+  return String(v);
+}
+
+export function TerminalSharedTooltip(props: React.ComponentProps<typeof ChartTooltip>) {
+  return (
+    <ChartTooltip
+      cursor={{ stroke: "rgba(255,255,255,0.18)", strokeWidth: 1 }}
+      formatter={(v: any) => defaultCurrencyFormatter(v)}
+      content={<TerminalTooltipContent indicator="line" />}
+      {...props}
+    />
+  );
+}
+
+export function TerminalLegendToggle({
+  payload,
+  hiddenKeys,
+  onToggle,
+  className,
+}: {
+  payload?: any[];
+  hiddenKeys: Record<string, boolean>;
+  onToggle: (dataKey: string) => void;
+  className?: string;
+}) {
+  if (!payload?.length) return null;
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2 justify-center", className)}>
+      {payload.map((p) => {
+        const key = String(p.dataKey ?? p.value ?? "");
+        const hidden = !!hiddenKeys[key];
+        return (
+          <button
+            key={key}
+            onClick={() => onToggle(key)}
+            className={cn(
+              "flex items-center gap-2 px-2.5 py-1 rounded-full border text-[11px] transition",
+              hidden ? "border-white/10 bg-black/20 text-white/45" : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10",
+            )}
+            type="button"
+          >
+            <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+            <span className="font-semibold">{p.value}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 const ChartLegend = RechartsPrimitive.Legend;
 
 const ChartLegendContent = React.forwardRef<
@@ -301,3 +407,8 @@ function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key:
 }
 
 export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartStyle };
+
+export {
+  TerminalChartContainer,
+  TerminalTooltipContent,
+};

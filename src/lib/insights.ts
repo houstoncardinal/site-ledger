@@ -83,3 +83,5 @@ export const exportToCSV = (rows: Record<string, any>[], filename: string) => {
   a.click();
   URL.revokeObjectURL(url);
 };
+
+export type CSVRow = Record<string, any>;

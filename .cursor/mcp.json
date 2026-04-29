@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "agent-pipeline": {
+      "command": "node",
+      "args": [
+        "/Users/cardinal/.windsurf/extensions/cemkurtulus.agent-pipeline-0.0.1-universal/dist/mcp/server.js"
+      ],
+      "env": {
+        "AGENT_PIPELINE_WORKSPACE": "/Users/cardinal/Desktop/site-ledger"
+      }
+    }
+  }
+}

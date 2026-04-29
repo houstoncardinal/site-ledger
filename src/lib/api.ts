@@ -117,9 +117,21 @@ export const vendorsApi = {
     return (data ?? []) as Vendor[];
   },
   upsert: async (name: string, default_category?: string) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("vendors")
-      .upsert({ name, default_category: default_category ?? null } as any, { onConflict: "name" });
+      .upsert({ name, default_category: default_category ?? null } as any, { onConflict: "name" })
+      .select()
+      .single();
+    if (error) throw error;
+    return (data ?? null) as Vendor | null;
+  },
+  update: async (id: string, v: Partial<Vendor>) => {
+    const { data, error } = await supabase.from("vendors").update(v as any).eq("id", id).select().single();
+    if (error) throw error;
+    return data as Vendor;
+  },
+  delete: async (id: string) => {
+    const { error } = await supabase.from("vendors").delete().eq("id", id);
     if (error) throw error;
   },
 };

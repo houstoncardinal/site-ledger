@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine, Brush,
 } from "recharts";
 import { FiltersProvider, useFilters, type DateRange, type FilterState } from "@/context/FiltersContext";
 import {
@@ -24,6 +24,11 @@ import {
 } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_COLORS, type ExpenseCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  TerminalChartContainer,
+  TerminalSharedTooltip,
+  TerminalLegendToggle,
+} from "@/components/ui/chart";
 
 const $n = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -145,20 +150,26 @@ function OverviewTab({ filtered, raw }: { filtered: ReturnType<typeof applyFilte
         subtitle={`${grouping === "daily" ? "Daily" : grouping === "weekly" ? "Weekly" : "Monthly"} income vs expenses`}
         onDrill={() => drillTo({})}
       >
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={series} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(0 0% 60%)" tickLine={false} />
-            <YAxis tick={{ fontSize: 10 }} stroke="hsl(0 0% 60%)" tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={44} />
-            <Tooltip
-              contentStyle={{ borderRadius: 8, border: "1px solid hsl(0 0% 90%)", fontSize: 12 }}
-              formatter={(v: number, name: string) => [$n(v), name]}
-            />
-            <Line type="monotone" dataKey="income" stroke="hsl(142 70% 40%)" strokeWidth={2} dot={false} name="Income" />
-            <Line type="monotone" dataKey="expenses" stroke="hsl(0 84% 50%)" strokeWidth={2} dot={false} name="Expenses" />
-            <ReferenceLine y={0} stroke="hsl(0 0% 80%)" />
+        <TerminalChartContainer config={{ income: { label: "Income" }, expenses: { label: "Expenses" } }}>
+          <LineChart data={series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="4 6" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={46} />
+            <TerminalSharedTooltip />
+            <ReferenceLine y={0} stroke="rgba(255,255,255,0.18)" />
+            <Line type="monotone" dataKey="income" stroke="hsl(142 70% 45%)" strokeWidth={2.5} dot={false} name="Income" />
+            <Line type="monotone" dataKey="expenses" stroke="hsl(0 84% 55%)" strokeWidth={2.5} dot={false} name="Expenses" />
+            {series.length > 14 && (
+              <Brush
+                dataKey="label"
+                height={24}
+                stroke="rgba(255,255,255,0.25)"
+                fill="rgba(255,255,255,0.06)"
+                travellerWidth={14}
+              />
+            )}
           </LineChart>
-        </ResponsiveContainer>
+        </TerminalChartContainer>
       </ChartCard>
 
       {/* Category breakdown + trends */}
@@ -232,36 +243,51 @@ function ProjectsTab({ filtered }: { filtered: ReturnType<typeof applyFilters> }
   const { data: projects = [] } = useProjects();
   const { dispatch } = useFilters();
   const navigate = useNavigate();
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const comparison = useMemo(() => buildProjectComparison(projects, filtered.expenses, filtered.incomes), [projects, filtered]);
 
   return (
     <div className="space-y-6">
       <ChartCard title="Revenue vs Expenses by Project" subtitle="Click a bar to filter">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={comparison} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(0 0% 60%)" tickLine={false} />
-            <YAxis tick={{ fontSize: 10 }} stroke="hsl(0 0% 60%)" tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={44} />
-            <Tooltip formatter={(v: number) => $n(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-            <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-            <Bar
-              dataKey="income"
-              fill="hsl(142 70% 40%)"
-              radius={[4, 4, 0, 0]}
-              name="Revenue"
-              onClick={(d) => dispatch({ type: "SET_PROJECT", projectId: d.id })}
-              style={{ cursor: "pointer" }}
+        <TerminalChartContainer config={{ income: { label: "Revenue" }, expenses: { label: "Expenses" } }}>
+          <BarChart data={comparison} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="4 6" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={46} />
+            <TerminalSharedTooltip />
+            <Legend
+              verticalAlign="bottom"
+              content={(p) => (
+                <TerminalLegendToggle
+                  payload={p.payload}
+                  hiddenKeys={hidden}
+                  onToggle={(k) => setHidden((h) => ({ ...h, [k]: !h[k] }))}
+                  className="pt-3"
+                />
+              )}
             />
-            <Bar
-              dataKey="expenses"
-              fill="hsl(0 84% 50%)"
-              radius={[4, 4, 0, 0]}
-              name="Expenses"
-              onClick={(d) => dispatch({ type: "SET_PROJECT", projectId: d.id })}
-              style={{ cursor: "pointer" }}
-            />
+            {!hidden.income && (
+              <Bar
+                dataKey="income"
+                fill="hsl(142 70% 45%)"
+                radius={[6, 6, 0, 0]}
+                name="Revenue"
+                onClick={(d) => { dispatch({ type: "SET_PROJECT", projectId: (d as any).id }); navigate(`/transactions?project=${(d as any).id}`); }}
+                style={{ cursor: "pointer" }}
+              />
+            )}
+            {!hidden.expenses && (
+              <Bar
+                dataKey="expenses"
+                fill="hsl(0 84% 55%)"
+                radius={[6, 6, 0, 0]}
+                name="Expenses"
+                onClick={(d) => { dispatch({ type: "SET_PROJECT", projectId: (d as any).id }); navigate(`/transactions?project=${(d as any).id}`); }}
+                style={{ cursor: "pointer" }}
+              />
+            )}
           </BarChart>
-        </ResponsiveContainer>
+        </TerminalChartContainer>
       </ChartCard>
 
       <div className="grid gap-3">

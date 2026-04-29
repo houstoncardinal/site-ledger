@@ -1,4 +1,4 @@
-import Dashboard from "./Dashboard";
+import QuickStart from "./QuickStart";
 
-const Index = () => <Dashboard />;
+const Index = () => <QuickStart />;
 export default Index;

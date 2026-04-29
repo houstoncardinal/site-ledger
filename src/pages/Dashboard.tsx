@@ -18,12 +18,16 @@ import { calcProjectInsights } from "@/lib/insights";
 import { calcBurnRate, detectAnomalies, generateInsights, calcProjectPredictions } from "@/lib/predictions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { TerminalChartContainer, TerminalSharedTooltip } from "@/components/ui/chart";
 
 export default function Dashboard() {
   const { data: projects = [], isLoading: lp } = useProjects();
   const { data: expenses = [], isLoading: le } = useExpenses();
   const { data: incomes = [] } = useIncomes();
   const [range, setRange] = useState(30);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
 
   const filteredExpenses = useMemo(() => {
     const cutoff = startOfDay(subDays(new Date(), range)).getTime();
@@ -108,6 +112,37 @@ export default function Dashboard() {
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 space-y-5 max-w-7xl mx-auto">
+      {/* Mobile primary actions */}
+      <div className="md:hidden grid grid-cols-2 gap-3">
+        <Link
+          to="/projects"
+          className="stat-card p-4 flex items-center justify-between border border-border/60 hover:border-primary/30"
+        >
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-muted-foreground tracking-wide">Active Projects</div>
+            <div className="font-display font-bold text-xl mt-1">{activeProjects.length}</div>
+            <div className="text-xs text-muted-foreground mt-1">Tap to manage</div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+            <FolderOpen className="w-5 h-5 text-primary" />
+          </div>
+        </Link>
+
+        <Link
+          to="/transactions"
+          className="stat-card p-4 flex items-center justify-between border border-border/60 hover:border-primary/30"
+        >
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-muted-foreground tracking-wide">Add / Edit</div>
+            <div className="font-display font-bold text-xl mt-1">Expenses</div>
+            <div className="text-xs text-muted-foreground mt-1">Swipe to delete</div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center shrink-0">
+            <DollarSign className="w-5 h-5 text-muted-foreground" />
+          </div>
+        </Link>
+      </div>
+
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -148,7 +183,7 @@ export default function Dashboard() {
         <SubCard label="Owed to vendors" value={fmt(unpaidEx)} sub={`${expenses.filter((e) => e.payment_status !== "paid").length} unpaid expenses`} />
       </div>
 
-      {/* Intelligence panel */}
+      {/* Intelligence panel (kept high, condensed) */}
       {(insights.length > 0 || anomalies.length > 0) && (
         <div className="grid md:grid-cols-2 gap-4">
           {/* Contextual insights */}
@@ -226,114 +261,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Alerts */}
-      {allAlerts.length > 0 && (
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center">
-              <AlertTriangle className="w-3.5 h-3.5 text-primary" />
-            </div>
-            <SectionTitle>Smart Alerts</SectionTitle>
-          </div>
-          <div className="space-y-1">
-            {allAlerts.map((a, i) => (
-              <Link key={i} to={`/projects/${a.project.id}`} className="flex items-center gap-3 text-sm px-3 py-2.5 rounded-xl hover:bg-muted/60 transition">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${a.level === "danger" ? "bg-primary" : "bg-orange-400"}`} />
-                <span className="font-semibold">{a.project.name}</span>
-                <span className="text-muted-foreground truncate">{a.message}</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/50 ml-auto shrink-0" />
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Time chart + category */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 stat-card">
-          <SectionTitle>Cash Flow Over Time</SectionTitle>
-          <div className="h-64 mt-2">
-            <ResponsiveContainer>
-              <LineChart data={overTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(0 0% 50%)" />
-                <YAxis tick={{ fontSize: 11 }} stroke="hsl(0 0% 50%)" tickFormatter={(v) => `$${v / 1000}k`} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(0 0% 90%)" }} formatter={(v: number) => `$${v.toLocaleString()}`} />
-                <Line type="monotone" dataKey="expenses" stroke="hsl(0 84% 50%)" strokeWidth={2.5} dot={false} name="Expenses" />
-                <Line type="monotone" dataKey="income" stroke="hsl(142 70% 40%)" strokeWidth={2.5} dot={false} name="Income" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <SectionTitle>By Category</SectionTitle>
-          <div className="h-44 mt-2">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={42} outerRadius={70} paddingAngle={2}>
-                  {byCategory.map((c) => <Cell key={c.key} fill={CATEGORY_COLORS[c.key]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-1.5 mt-2">
-            {byCategory.slice(0, 5).map((c) => (
-              <Link
-                key={c.key}
-                to={`/transactions?category=${c.key}`}
-                className="flex items-center justify-between text-sm hover:bg-muted/50 px-1 py-0.5 rounded"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-sm" style={{ background: CATEGORY_COLORS[c.key] }} />
-                  <span>{c.name}</span>
-                </div>
-                <span className="font-semibold">${c.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Project comparison + top vendors */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="stat-card">
-          <SectionTitle>Project vs Project</SectionTitle>
-          <div className="h-56 mt-2">
-            <ResponsiveContainer>
-              <BarChart data={projectComparison}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(0 0% 50%)" />
-                <YAxis tick={{ fontSize: 11 }} stroke="hsl(0 0% 50%)" tickFormatter={(v) => `$${v / 1000}k`} />
-                <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
-                <Bar dataKey="income" fill="hsl(142 70% 40%)" radius={[4, 4, 0, 0]} name="Income" />
-                <Bar dataKey="spent" fill="hsl(0 84% 50%)" radius={[4, 4, 0, 0]} name="Spent" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <SectionTitle>Top Vendors</SectionTitle>
-          <div className="h-56 mt-2">
-            <ResponsiveContainer>
-              <BarChart data={topVendors} layout="vertical" margin={{ left: 8 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} stroke="hsl(0 0% 50%)" />
-                <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
-                <Bar dataKey="amount" fill="hsl(0 0% 8%)" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Period summaries */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <PeriodCard title="This Week" income={summaries.wk.in} expenses={summaries.wk.ex} />
-        <PeriodCard title="This Month" income={summaries.mo.in} expenses={summaries.mo.ex} />
-      </div>
+      {/* Keep projects visible (important), everything else collapsible */}
 
       {/* Active projects */}
       <div className="stat-card">
@@ -391,6 +319,130 @@ export default function Dashboard() {
           })}
         </div>
       </div>
+
+      {/* Details (collapsed by default) */}
+      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">More details</div>
+          <CollapsibleTrigger asChild>
+            <button className="text-xs font-semibold text-primary hover:opacity-80 transition">
+              {detailsOpen ? "Hide" : "Show"}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent>
+          <div className="space-y-4 mt-3">
+            {/* Alerts */}
+            {allAlerts.length > 0 && (
+              <div className="stat-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center">
+                    <AlertTriangle className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <SectionTitle>Smart Alerts</SectionTitle>
+                </div>
+                <div className="space-y-1">
+                  {allAlerts.map((a, i) => (
+                    <Link key={i} to={`/projects/${a.project.id}`} className="flex items-center gap-3 text-sm px-3 py-2.5 rounded-xl hover:bg-muted/60 transition">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${a.level === "danger" ? "bg-primary" : "bg-orange-400"}`} />
+                      <span className="font-semibold">{a.project.name}</span>
+                      <span className="text-muted-foreground truncate">{a.message}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/50 ml-auto shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Time chart + category */}
+            <div className="grid lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 stat-card">
+                <SectionTitle>Cash Flow Over Time</SectionTitle>
+                <div className="h-64 mt-2">
+                  <TerminalChartContainer config={{ expenses: { label: "Expenses" }, income: { label: "Income" } }} className="h-full">
+                    <LineChart data={overTime} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="4 6" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={46} />
+                      <TerminalSharedTooltip />
+                      <Line type="monotone" dataKey="expenses" stroke="hsl(0 84% 55%)" strokeWidth={2.5} dot={false} name="Expenses" />
+                      <Line type="monotone" dataKey="income" stroke="hsl(142 70% 45%)" strokeWidth={2.5} dot={false} name="Income" />
+                    </LineChart>
+                  </TerminalChartContainer>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <SectionTitle>By Category</SectionTitle>
+                <div className="h-44 mt-2">
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={42} outerRadius={70} paddingAngle={2}>
+                        {byCategory.map((c) => <Cell key={c.key} fill={CATEGORY_COLORS[c.key]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-1.5 mt-2">
+                  {byCategory.slice(0, 5).map((c) => (
+                    <Link
+                      key={c.key}
+                      to={`/transactions?category=${c.key}`}
+                      className="flex items-center justify-between text-sm hover:bg-muted/50 px-1 py-0.5 rounded"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-sm" style={{ background: CATEGORY_COLORS[c.key] }} />
+                        <span>{c.name}</span>
+                      </div>
+                      <span className="font-semibold">${c.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Project comparison + top vendors */}
+            <div className="grid lg:grid-cols-2 gap-4">
+              <div className="stat-card">
+                <SectionTitle>Project vs Project</SectionTitle>
+                <div className="h-56 mt-2">
+                  <ResponsiveContainer>
+                    <BarChart data={projectComparison}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(0 0% 50%)" />
+                      <YAxis tick={{ fontSize: 11 }} stroke="hsl(0 0% 50%)" tickFormatter={(v) => `$${v / 1000}k`} />
+                      <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
+                      <Bar dataKey="income" fill="hsl(142 70% 40%)" radius={[4, 4, 0, 0]} name="Income" />
+                      <Bar dataKey="spent" fill="hsl(0 84% 50%)" radius={[4, 4, 0, 0]} name="Spent" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <SectionTitle>Top Vendors</SectionTitle>
+                <div className="h-56 mt-2">
+                  <ResponsiveContainer>
+                    <BarChart data={topVendors} layout="vertical" margin={{ left: 8 }}>
+                      <XAxis type="number" hide />
+                      <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} stroke="hsl(0 0% 50%)" />
+                      <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
+                      <Bar dataKey="amount" fill="hsl(0 0% 8%)" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Period summaries */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <PeriodCard title="This Week" income={summaries.wk.in} expenses={summaries.wk.ex} />
+              <PeriodCard title="This Month" income={summaries.mo.in} expenses={summaries.mo.ex} />
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
