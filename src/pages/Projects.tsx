@@ -1,43 +1,48 @@
 import { useState } from "react";
-import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Archive, ArrowUpRight } from "lucide-react";
+import { Plus, Archive, ArrowUpRight, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCreateProject, useExpenses, useIncomes, useProjects, useUpdateProject } from "@/lib/hooks";
+import { calcProjectInsights } from "@/lib/insights";
 import { toast } from "sonner";
 
 export default function Projects() {
-  const projects = useStore((s) => s.projects);
-  const expenses = useStore((s) => s.expenses);
-  const addProject = useStore((s) => s.addProject);
-  const archiveProject = useStore((s) => s.archiveProject);
+  const { data: projects = [] } = useProjects();
+  const { data: expenses = [] } = useExpenses();
+  const { data: incomes = [] } = useIncomes();
+  const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
-    startDate: new Date().toISOString().slice(0, 10),
+    client_name: "",
+    address: "",
+    start_date: new Date().toISOString().slice(0, 10),
     budget: "",
   });
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.name.trim()) return toast.error("Project name required");
-    addProject({
+    await createProject.mutateAsync({
       name: form.name.trim(),
-      startDate: form.startDate,
-      budget: form.budget ? parseFloat(form.budget) : undefined,
+      client_name: form.client_name.trim() || null,
+      address: form.address.trim() || null,
+      start_date: form.start_date,
+      budget: form.budget ? parseFloat(form.budget) : null,
       status: "active",
     });
-    toast.success("Project created");
     setOpen(false);
-    setForm({ name: "", startDate: new Date().toISOString().slice(0, 10), budget: "" });
+    setForm({ name: "", client_name: "", address: "", start_date: new Date().toISOString().slice(0, 10), budget: "" });
   };
 
   const active = projects.filter((p) => p.status === "active");
-  const completed = projects.filter((p) => p.status === "completed");
+  const completed = projects.filter((p) => p.status !== "active");
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -55,37 +60,41 @@ export default function Projects() {
           <DialogContent>
             <DialogHeader><DialogTitle className="font-display text-2xl">Create Project</DialogTitle></DialogHeader>
             <div className="space-y-4 py-2">
-              <div>
-                <Label className="text-xs uppercase tracking-wider font-semibold">Project Name *</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Riverside Tower" className="h-11 mt-1.5" />
-              </div>
+              <Field label="Project Name" required>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Riverside Tower" className="h-11" />
+              </Field>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs uppercase tracking-wider font-semibold">Start Date</Label>
-                  <Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="h-11 mt-1.5" />
-                </div>
-                <div>
-                  <Label className="text-xs uppercase tracking-wider font-semibold">Budget ($)</Label>
-                  <Input type="number" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="Optional" className="h-11 mt-1.5" />
-                </div>
+                <Field label="Client">
+                  <Input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} className="h-11" />
+                </Field>
+                <Field label="Start Date">
+                  <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="h-11" />
+                </Field>
               </div>
+              <Field label="Address">
+                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="h-11" />
+              </Field>
+              <Field label="Budget ($)">
+                <Input type="number" inputMode="decimal" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="Optional" className="h-11" />
+              </Field>
             </div>
             <DialogFooter>
-              <Button onClick={submit} className="bg-gradient-primary shadow-red w-full h-11">Create Project</Button>
+              <Button onClick={submit} disabled={createProject.isPending} className="bg-gradient-primary shadow-red w-full h-11">Create Project</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Section title="Active" projects={active} expenses={expenses} onArchive={(id) => { archiveProject(id); toast.success("Project archived"); }} />
+      <Section title="Active" projects={active} expenses={expenses} incomes={incomes}
+        onArchive={(id) => updateProject.mutate({ id, status: "completed" })} />
       {completed.length > 0 && (
-        <Section title="Completed" projects={completed} expenses={expenses} muted />
+        <Section title="Completed" projects={completed} expenses={expenses} incomes={incomes} muted />
       )}
     </div>
   );
 }
 
-function Section({ title, projects, expenses, onArchive, muted }: any) {
+function Section({ title, projects, expenses, incomes, onArchive, muted }: any) {
   if (projects.length === 0) {
     return (
       <div>
@@ -101,43 +110,59 @@ function Section({ title, projects, expenses, onArchive, muted }: any) {
       <h2 className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3">{title}</h2>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {projects.map((p: any) => {
-          const spent = expenses.filter((e: any) => e.projectId === p.id).reduce((s: number, e: any) => s + e.amount, 0);
-          const count = expenses.filter((e: any) => e.projectId === p.id).length;
-          const pct = p.budget ? Math.min(100, (spent / p.budget) * 100) : 0;
+          const ins = calcProjectInsights(p, expenses, incomes);
+          const pct = ins.budgetUsedPct ?? 0;
           return (
             <div key={p.id} className={`stat-card group ${muted ? "opacity-70" : ""}`}>
               <div className="flex items-start justify-between">
-                <div>
-                  <Link to={`/projects/${p.id}`} className="font-display font-bold text-lg group-hover:text-primary transition">
+                <div className="min-w-0">
+                  <Link to={`/projects/${p.id}`} className="font-display font-bold text-lg group-hover:text-primary transition truncate block">
                     {p.name}
                   </Link>
-                  <div className="text-xs text-muted-foreground mt-0.5">{p.id} · {count} entries</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {p.client_name ?? "No client"}{p.address ? ` · ${p.address}` : ""}
+                  </div>
                 </div>
-                <Link to={`/projects/${p.id}`} className="w-8 h-8 rounded-md bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition">
+                <Link to={`/projects/${p.id}`} className="w-8 h-8 rounded-md bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition shrink-0">
                   <ArrowUpRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="mt-4">
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">Spent</div>
-                <div className="font-display font-bold text-2xl">${spent.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Spent</div>
+                  <div className="font-display font-bold text-base">${ins.totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Income</div>
+                  <div className="font-display font-bold text-base text-emerald-700">${ins.totalIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Profit</div>
+                  <div className={`font-display font-bold text-base ${ins.profit >= 0 ? "text-emerald-700" : "text-primary"}`}>
+                    {ins.profit >= 0 ? "+" : "-"}${Math.abs(ins.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </div>
+                </div>
               </div>
-              {p.budget ? (
+              {p.budget && (
                 <div className="mt-3">
                   <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className={`h-full ${pct > 90 ? "bg-primary" : pct > 70 ? "bg-warning" : "bg-success"}`} style={{ width: `${pct}%` }} />
+                    <div className={`h-full ${pct > 90 ? "bg-primary" : pct > 70 ? "bg-warning" : "bg-success"}`} style={{ width: `${Math.min(100, pct)}%` }} />
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>{pct.toFixed(0)}% used</span>
-                    <span>of ${p.budget.toLocaleString()}</span>
+                    <span>of ${Number(p.budget).toLocaleString()}</span>
                   </div>
                 </div>
-              ) : (
-                <div className="text-xs text-muted-foreground mt-3">No budget set</div>
+              )}
+              {ins.alerts.find((a) => a.level !== "info") && (
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-warning font-semibold">
+                  <AlertTriangle className="w-3 h-3" /> {ins.alerts.find((a) => a.level !== "info")!.message}
+                </div>
               )}
               {onArchive && (
                 <button
                   onClick={() => onArchive(p.id)}
-                  className="mt-4 text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                  className="mt-3 text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
                 >
                   <Archive className="w-3 h-3" /> Mark complete
                 </button>
@@ -146,6 +171,17 @@ function Section({ title, projects, expenses, onArchive, muted }: any) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-xs uppercase tracking-wider font-semibold">
+        {label} {required && <span className="text-primary">*</span>}
+      </Label>
+      <div className="mt-1.5">{children}</div>
     </div>
   );
 }
