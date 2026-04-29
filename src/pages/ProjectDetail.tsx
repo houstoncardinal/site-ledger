@@ -21,7 +21,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function ProjectDetail() {
   const { id } = useParams();
   const project = useStore((s) => s.projects.find((p) => p.id === id));
-  const expenses = useStore((s) => s.expenses.filter((e) => e.projectId === id));
+  const allExpenses = useStore((s) => s.expenses);
+  const expenses = useMemo(() => allExpenses.filter((e) => e.projectId === id), [allExpenses, id]);
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
   const byCategory = useMemo(() => {
