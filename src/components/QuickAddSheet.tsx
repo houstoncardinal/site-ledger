@@ -396,14 +396,11 @@ export default function QuickAddSheet({
       const constraintsHQ: MediaStreamConstraints = {
         video: {
           facingMode: { ideal: "environment" },
-          // Request high resolution for better OCR/AI extraction.
           width: { ideal: 3840 },
           height: { ideal: 2160 },
-          // Best-effort camera quality knobs (not supported on all devices/browsers)
-          focusMode: "continuous" as any,
-          exposureMode: "continuous" as any,
-          whiteBalanceMode: "continuous" as any,
-        },
+          // Best-effort camera quality knobs (not standard in all TS lib versions)
+          ...({ focusMode: "continuous", exposureMode: "continuous", whiteBalanceMode: "continuous" } as any),
+        } as MediaTrackConstraints,
         audio: false,
       };
 
