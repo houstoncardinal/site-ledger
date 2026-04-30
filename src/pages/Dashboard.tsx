@@ -115,12 +115,12 @@ export default function Dashboard() {
       {/* ── Luxe page header ── */}
       <section className="relative rounded-[28px] overflow-hidden hero-luxe animate-rise">
         <div aria-hidden className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-float-slow z-0" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-12 w-80 h-80 rounded-full bg-[hsl(41_70%_52%/0.18)] blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.4s" }} />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-12 w-80 h-80 rounded-full bg-white/10 blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.4s" }} />
         <div className="relative z-10 px-5 md:px-9 py-6 md:py-7 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="pill-gold animate-glow-pulse">
-                <Zap className="w-3 h-3" /> Command Center
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase text-white/90 bg-white/5 border border-white/15 backdrop-blur animate-glow-pulse">
+                <Zap className="w-3 h-3 text-[hsl(var(--primary))]" /> Command Center
               </span>
               <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-white/40">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -154,7 +154,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="rule-gold" />
+        <div className="h-px w-full bg-[linear-gradient(90deg,transparent,hsl(0_82%_48%/0.55)_30%,hsl(0_0%_100%/0.7)_50%,hsl(0_82%_48%/0.55)_70%,transparent)]" />
         {/* Live KPI strip in hero */}
         <div className="relative z-10 px-5 md:px-9 py-3.5 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 bg-black/20 backdrop-blur-xl">
           <HeroStat label="Revenue" value={fmt(totalRevenue)} tone="emerald" />
@@ -570,7 +570,7 @@ function HeroStat({ label, value, tone, highlight }: { label: string; value: str
   const toneClass =
     tone === "emerald" ? "text-emerald-300" :
     tone === "red" ? "text-red-300" :
-    "text-[hsl(41_78%_78%)]";
+    "text-white";
   return (
     <div className={cn("flex flex-col leading-tight", highlight && "md:border-l md:border-white/10 md:pl-6")}>
       <span className="text-[9px] font-bold tracking-[0.20em] uppercase text-white/40">{label}</span>
