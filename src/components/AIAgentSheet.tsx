@@ -357,9 +357,9 @@ export default function AIAgentSheet({ open, onOpenChange }: Props) {
 
     const step = plan.steps[confirmIndex];
     append({ role: "agent", text: `→ ${step.label}` });
-    const res = await runStep(step);
+    const res: ExecResult = await runStep(step);
     if (!res.ok) {
-      append({ role: "agent", text: `Stopped: ${res.error}` });
+      append({ role: "agent", text: `Stopped: ${(res as { ok: false; error: string }).error}` });
       setExecuting(false);
       setConfirmIndex(null);
       setResumeFrom(0);
