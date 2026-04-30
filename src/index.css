@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;450;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;450;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -46,11 +46,24 @@
     --surface-dark: 0 0% 7%;
     --surface-dark-foreground: 0 0% 96%;
 
+    /* ─── Luxury accents ─── */
+    --gold: 41 70% 52%;
+    --gold-soft: 41 78% 88%;
+    --gold-deep: 36 60% 38%;
+    --ink: 220 25% 8%;
+    --ink-soft: 220 18% 14%;
+
     /* ─── Gradients ─── */
     --gradient-primary: linear-gradient(135deg, hsl(0 82% 48%), hsl(0 88% 58%));
-    --gradient-dark: linear-gradient(160deg, hsl(0 0% 8%), hsl(0 0% 13%));
+    --gradient-dark: linear-gradient(160deg, hsl(220 25% 8%), hsl(220 22% 14%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 97%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 99%) 100%);
+    --gradient-luxe: linear-gradient(135deg, hsl(220 25% 8%) 0%, hsl(220 22% 14%) 45%, hsl(0 60% 22%) 100%);
+    --gradient-aurora: radial-gradient(900px circle at 12% -10%, hsl(0 82% 48% / 0.32), transparent 55%),
+                       radial-gradient(700px circle at 88% 20%, hsl(41 70% 52% / 0.18), transparent 55%),
+                       radial-gradient(600px circle at 50% 110%, hsl(220 70% 40% / 0.20), transparent 60%);
+    --gradient-gold: linear-gradient(135deg, hsl(41 78% 68%) 0%, hsl(41 70% 52%) 50%, hsl(36 60% 38%) 100%);
+    --gradient-text-luxe: linear-gradient(120deg, hsl(0 0% 100%) 0%, hsl(41 78% 88%) 40%, hsl(0 0% 100%) 80%);
 
     /* ─── Elevation / Shadows ─── */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
@@ -60,6 +73,8 @@
     --shadow-xl: 0 24px 48px -12px rgb(0 0 0 / 0.16), 0 8px 16px -8px rgb(0 0 0 / 0.08);
     --shadow-red: 0 6px 20px -4px hsl(0 82% 48% / 0.32);
     --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.04);
+    --shadow-luxe: 0 30px 60px -20px hsl(220 25% 8% / 0.45), 0 12px 24px -12px hsl(0 82% 48% / 0.18);
+    --shadow-gold: 0 8px 28px -6px hsl(41 70% 52% / 0.45);
 
     /* ─── Sidebar tokens ─── */
     --sidebar-background: 0 0% 7%;
@@ -235,4 +250,184 @@
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* ─── Luxury components ─────────────────────────────────────────── */
+@layer components {
+  .font-serif-luxe {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* Premium dark hero surface with aurora glow */
+  .hero-luxe {
+    position: relative;
+    background: var(--gradient-luxe);
+    border: 1px solid hsl(0 0% 100% / 0.06);
+    box-shadow: var(--shadow-luxe);
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .hero-luxe::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-aurora);
+    opacity: 0.95;
+    z-index: 0;
+    animation: aurora-drift 18s ease-in-out infinite alternate;
+  }
+  .hero-luxe::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 18% 32%, hsl(0 0% 100% / 0.18), transparent 60%),
+      radial-gradient(1px 1px at 72% 18%, hsl(41 78% 88% / 0.22), transparent 60%),
+      radial-gradient(1px 1px at 42% 72%, hsl(0 0% 100% / 0.14), transparent 60%),
+      radial-gradient(1.5px 1.5px at 88% 65%, hsl(41 78% 88% / 0.18), transparent 60%);
+    opacity: 0.7;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Hairline gold rule */
+  .rule-gold {
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      hsl(41 70% 52% / 0.6) 30%,
+      hsl(41 78% 88% / 0.9) 50%,
+      hsl(41 70% 52% / 0.6) 70%,
+      transparent 100%);
+  }
+
+  /* Shimmering luxe text */
+  .text-luxe-shimmer {
+    background: var(--gradient-text-luxe);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer-pan 6s linear infinite;
+  }
+
+  /* Gold gradient text */
+  .text-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Premium card */
+  .luxe-card {
+    @apply bg-card rounded-2xl;
+    background-image: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 30% 99%) 100%);
+    border: 1px solid hsl(var(--border) / 0.7);
+    box-shadow: 0 1px 0 hsl(0 0% 100%) inset, var(--shadow-md);
+    transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease;
+  }
+  .luxe-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 1px 0 hsl(0 0% 100%) inset, var(--shadow-lg);
+  }
+
+  /* Soft luxe pill */
+  .pill-gold {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wider uppercase;
+    background: linear-gradient(135deg, hsl(41 78% 88% / 0.16), hsl(41 70% 52% / 0.10));
+    border: 1px solid hsl(41 70% 52% / 0.35);
+    color: hsl(41 78% 88%);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Animated gradient border */
+  .ring-luxe {
+    position: relative;
+  }
+  .ring-luxe::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(from var(--ang, 0deg),
+      hsl(0 82% 48% / 0.6),
+      hsl(41 70% 52% / 0.6),
+      hsl(0 82% 48% / 0.6));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+    animation: spin-ang 8s linear infinite;
+  }
+}
+
+/* ─── Animations ──────────────────────────────────────────────── */
+@layer utilities {
+  .animate-shimmer { animation: shimmer-pan 3s linear infinite; }
+  .animate-aurora { animation: aurora-drift 18s ease-in-out infinite alternate; }
+  .animate-float-slow { animation: float-slow 9s ease-in-out infinite; }
+  .animate-glow-pulse { animation: glow-pulse 3.4s ease-in-out infinite; }
+  .animate-gradient-flow {
+    background-size: 200% 200%;
+    animation: gradient-flow 10s ease infinite;
+  }
+  .animate-rise { animation: rise .65s cubic-bezier(.16,1,.3,1) both; }
+  .animate-rise-soft { animation: rise .9s cubic-bezier(.16,1,.3,1) both; }
+  .animate-marquee { animation: marquee 38s linear infinite; }
+
+  /* Stagger helpers */
+  .stagger-1 { animation-delay: .06s; }
+  .stagger-2 { animation-delay: .12s; }
+  .stagger-3 { animation-delay: .18s; }
+  .stagger-4 { animation-delay: .24s; }
+  .stagger-5 { animation-delay: .30s; }
+}
+
+@property --ang {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-ang { to { --ang: 360deg; } }
+
+@keyframes shimmer-pan {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-2%, 1.5%, 0) scale(1.06); }
+  100% { transform: translate3d(2%, -1%, 0) scale(1.04); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50%      { transform: translateY(-8px) translateX(4px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: .7; filter: blur(0); }
+  50%      { opacity: 1;  filter: blur(.4px); }
+}
+
+@keyframes gradient-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }

@@ -122,94 +122,122 @@ export default function QuickStart() {
   const fmt = (n: number) => `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-6 max-w-5xl mx-auto space-y-5">
+    <div className="px-4 py-5 md:px-8 md:py-7 max-w-6xl mx-auto space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Quick Start</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">{format(now, "EEEE, MMMM d")} · {stats.activeProjects} active project{stats.activeProjects !== 1 ? "s" : ""}</p>
+      <div className="flex items-end justify-between gap-3">
+        <div className="animate-rise">
+          <div className="text-[10px] font-bold tracking-[0.22em] uppercase text-muted-foreground/70">
+            Workspace · {format(now, "EEEE")}
+          </div>
+          <h1 className="font-display text-3xl md:text-[40px] font-bold tracking-[-0.02em] mt-1">
+            Quick <span className="font-serif-luxe italic text-gold">Start</span>
+          </h1>
+          <p className="text-muted-foreground text-[13px] mt-1">
+            {format(now, "MMMM d, yyyy")} · {stats.activeProjects} active project{stats.activeProjects !== 1 ? "s" : ""} · {stats.vendorCount} vendor{stats.vendorCount !== 1 ? "s" : ""}
+          </p>
         </div>
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-2xl bg-surface-dark text-white hover:opacity-90 transition shadow-sm text-sm font-medium shrink-0"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-2xl bg-[hsl(var(--ink))] text-white hover:bg-[hsl(var(--ink-soft))] transition shadow-md text-[13px] font-semibold shrink-0"
         >
           <LayoutDashboard className="w-4 h-4" /> Dashboard
         </Link>
       </div>
 
       {/* ── Hero / primary CTA ── */}
-      <div className={cn(
-        "relative rounded-3xl overflow-hidden",
-        "bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950",
-        "border border-white/[0.07] shadow-2xl",
-      )}>
-        <div className="absolute inset-0 bg-[radial-gradient(700px_circle_at_20%_-10%,rgba(220,38,38,0.18),transparent_55%),radial-gradient(500px_circle_at_85%_80%,rgba(16,185,129,0.10),transparent_50%)]" />
-        <div className="relative p-6 md:p-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-white/70 mb-4">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            Built for the jobsite
+      <section className="relative rounded-[28px] overflow-hidden hero-luxe animate-rise">
+        {/* Floating orbs */}
+        <div aria-hidden className="pointer-events-none absolute -top-24 -left-16 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-float-slow z-0" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-12 w-80 h-80 rounded-full bg-[hsl(41_70%_52%/0.18)] blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.5s" }} />
+        {/* Subtle grid */}
+        <div aria-hidden className="absolute inset-0 z-0 opacity-[0.07] mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "linear-gradient(hsl(0 0% 100% / 0.7) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100% / 0.7) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+            maskImage: "radial-gradient(ellipse at 50% 30%, black 40%, transparent 80%)",
+          }}
+        />
+
+        <div className="relative z-10 px-6 md:px-10 pt-8 md:pt-10 pb-7 md:pb-9">
+          {/* Top row: brand mark + meta */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="pill-gold animate-glow-pulse">
+                <Sparkles className="w-3.5 h-3.5" />
+                Built for the jobsite
+              </div>
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-white/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live ledger
+              </span>
+            </div>
+            <div className="hidden md:block text-[10px] font-semibold tracking-[0.18em] uppercase text-white/30">
+              {format(now, "MMM d · yyyy").toUpperCase()}
+            </div>
           </div>
-          <h2 className="font-display text-2xl md:text-3xl font-bold text-white leading-tight">
-            Fast, accurate bookkeeping.
-            <span className="text-primary/90"> No accountant required.</span>
+
+          {/* Headline */}
+          <h2 className="font-display font-bold text-[34px] md:text-[56px] leading-[0.98] tracking-[-0.025em] max-w-3xl">
+            <span className="block text-white/95">Fast, accurate</span>
+            <span className="block">
+              <span className="font-serif-luxe italic text-luxe-shimmer">bookkeeping.</span>
+            </span>
+            <span className="block text-white/55 text-[22px] md:text-[30px] font-medium tracking-tight mt-3">
+              No accountant required.
+            </span>
           </h2>
-          <p className="text-white/50 mt-2 text-sm max-w-xl">
-            Log expenses, scan receipts, track projects, and see your profit — all from one place.
+
+          {/* Hairline rule */}
+          <div className="rule-gold mt-6 md:mt-7 max-w-[420px]" />
+
+          {/* Sub copy */}
+          <p className="text-white/55 mt-5 text-[14px] md:text-[15px] max-w-xl leading-relaxed">
+            Capture expenses in seconds, scan receipts on site, and watch project profit move in real time —
+            engineered for the field, designed like a private office.
           </p>
-          <div className="mt-5 flex flex-wrap gap-2.5">
+
+          {/* CTAs */}
+          <div className="mt-7 flex flex-wrap gap-2.5">
             <Button
               onClick={() => openAction("expense")}
-              className="h-10 rounded-2xl bg-gradient-primary shadow-red font-semibold text-sm px-5"
+              className="h-11 rounded-2xl bg-gradient-primary shadow-red font-semibold text-[13px] px-5 hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
-              <Plus className="w-4 h-4 mr-1" /> Log Expense
+              <Plus className="w-4 h-4 mr-1.5" /> Log Expense
             </Button>
             <Button
               onClick={() => openAction("receipt")}
               variant="outline"
-              className="h-10 rounded-2xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white font-semibold text-sm px-5"
+              className="h-11 rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/15 hover:text-white font-semibold text-[13px] px-5 backdrop-blur"
             >
-              <Camera className="w-4 h-4 mr-1" /> Scan Receipt
+              <Camera className="w-4 h-4 mr-1.5" /> Scan Receipt
             </Button>
             <Button
               onClick={() => openAction("project")}
               variant="outline"
-              className="h-10 rounded-2xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white font-semibold text-sm px-5"
+              className="h-11 rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/15 hover:text-white font-semibold text-[13px] px-5 backdrop-blur"
             >
-              <FolderKanban className="w-4 h-4 mr-1" /> New Project
+              <FolderKanban className="w-4 h-4 mr-1.5" /> New Project
             </Button>
           </div>
         </div>
 
-        {/* Stat bar inside hero */}
-        {(stats.totalSpentMonth > 0 || stats.totalIncomeMonth > 0) && (
-          <div className="relative border-t border-white/[0.08] px-6 md:px-8 py-3 flex items-center gap-6 overflow-x-auto">
-            <div className="flex items-center gap-2 shrink-0">
-              <TrendingDown className="w-3.5 h-3.5 text-red-400/80" />
-              <span className="text-xs text-white/40">Spent this month</span>
-              <span className="text-sm font-bold text-white tabular-nums">{fmt(stats.totalSpentMonth)}</span>
-            </div>
-            <div className="w-px h-4 bg-white/10 shrink-0" />
-            <div className="flex items-center gap-2 shrink-0">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400/80" />
-              <span className="text-xs text-white/40">Income this month</span>
-              <span className="text-sm font-bold text-white tabular-nums">{fmt(stats.totalIncomeMonth)}</span>
-            </div>
-            {stats.net !== 0 && (
-              <>
-                <div className="w-px h-4 bg-white/10 shrink-0" />
-                <div className="flex items-center gap-2 shrink-0">
-                  <Activity className="w-3.5 h-3.5 text-white/40" />
-                  <span className="text-xs text-white/40">Net</span>
-                  <span className={cn("text-sm font-bold tabular-nums", stats.net >= 0 ? "text-emerald-400" : "text-red-400")}>
-                    {stats.net >= 0 ? "+" : ""}{fmt(stats.net)}
-                  </span>
-                </div>
-              </>
-            )}
+        {/* Live stat strip */}
+        <div className="relative z-10 border-t border-white/[0.08] bg-black/25 backdrop-blur-xl px-5 md:px-10 py-3.5">
+          <div className="flex items-center gap-7 overflow-x-auto">
+            <Stat label="Spent · MTD" value={fmt(stats.totalSpentMonth)} icon={TrendingDown} tone="red" />
+            <Divider />
+            <Stat label="Income · MTD" value={fmt(stats.totalIncomeMonth)} icon={TrendingUp} tone="emerald" />
+            <Divider />
+            <Stat label="Net" value={`${stats.net >= 0 ? "+" : "−"}${fmt(Math.abs(stats.net))}`} icon={Activity} tone={stats.net >= 0 ? "emerald" : "red"} />
+            <Divider />
+            <Stat label="Active jobs" value={stats.activeProjects.toString()} icon={Layers} tone="gold" />
+            <Divider />
+            <Stat label="Today" value={stats.todayTotal > 0 ? fmt(stats.todayTotal) : "—"} icon={Clock} tone="muted" />
           </div>
-        )}
-      </div>
+        </div>
+      </section>
 
       {/* ── Quick action tiles ── */}
       <div>
@@ -396,6 +424,29 @@ export default function QuickStart() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function Divider() {
+  return <span aria-hidden className="w-px h-5 bg-white/10 shrink-0" />;
+}
+
+function Stat({
+  label, value, icon: Icon, tone = "muted",
+}: { label: string; value: string; icon: any; tone?: "red" | "emerald" | "gold" | "muted" }) {
+  const toneClass =
+    tone === "red" ? "text-red-300" :
+    tone === "emerald" ? "text-emerald-300" :
+    tone === "gold" ? "text-[hsl(41_78%_78%)]" :
+    "text-white/55";
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <Icon className={cn("w-3.5 h-3.5", toneClass)} />
+      <div className="flex flex-col leading-tight">
+        <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-white/40">{label}</span>
+        <span className="text-[13px] font-bold text-white tabular-nums">{value}</span>
+      </div>
     </div>
   );
 }

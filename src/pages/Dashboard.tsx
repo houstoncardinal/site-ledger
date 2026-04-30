@@ -111,15 +111,67 @@ export default function Dashboard() {
   if (lp || le) return <DashboardSkeleton />;
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 space-y-5 max-w-7xl mx-auto">
+    <div className="px-4 py-6 md:px-8 md:py-8 space-y-6 max-w-7xl mx-auto">
+      {/* ── Luxe page header ── */}
+      <section className="relative rounded-[28px] overflow-hidden hero-luxe animate-rise">
+        <div aria-hidden className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-float-slow z-0" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-12 w-80 h-80 rounded-full bg-[hsl(41_70%_52%/0.18)] blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.4s" }} />
+        <div className="relative z-10 px-5 md:px-9 py-6 md:py-7 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="pill-gold animate-glow-pulse">
+                <Zap className="w-3 h-3" /> Command Center
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-white/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </span>
+            </div>
+            <h1 className="font-display text-3xl md:text-[44px] font-bold tracking-[-0.02em] text-white">
+              Financial <span className="font-serif-luxe italic text-luxe-shimmer">overview</span>
+            </h1>
+            <p className="text-white/55 text-[13px] md:text-sm mt-1.5 max-w-xl">
+              Real-time profit, burn rate, and project health — every dollar accounted for.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <ReportButton size="sm" />
+            <div className="flex gap-0.5 bg-white/8 border border-white/10 rounded-xl p-1 backdrop-blur">
+              {[7, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setRange(d)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                    range === d
+                      ? "bg-white text-foreground shadow-sm"
+                      : "text-white/55 hover:text-white"
+                  )}
+                >
+                  {d}D
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="rule-gold" />
+        {/* Live KPI strip in hero */}
+        <div className="relative z-10 px-5 md:px-9 py-3.5 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 bg-black/20 backdrop-blur-xl">
+          <HeroStat label="Revenue" value={fmt(totalRevenue)} tone="emerald" />
+          <HeroStat label="Expenses" value={fmt(totalSpend)} tone="red" />
+          <HeroStat label="Net Profit" value={`${netProfit >= 0 ? "+" : "−"}${fmt(Math.abs(netProfit))}`} tone={netProfit >= 0 ? "emerald" : "red"} highlight />
+          <HeroStat label="Active Projects" value={activeProjects.length.toString()} tone="gold" />
+        </div>
+      </section>
+
       {/* Mobile primary actions */}
       <div className="md:hidden grid grid-cols-2 gap-3">
         <Link
           to="/projects"
-          className="stat-card p-4 flex items-center justify-between border border-border/60 hover:border-primary/30"
+          className="luxe-card p-4 flex items-center justify-between"
         >
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-muted-foreground tracking-wide">Active Projects</div>
+            <div className="text-[10px] font-bold text-muted-foreground tracking-[0.16em] uppercase">Projects</div>
             <div className="font-display font-bold text-xl mt-1">{activeProjects.length}</div>
             <div className="text-xs text-muted-foreground mt-1">Tap to manage</div>
           </div>
@@ -127,15 +179,14 @@ export default function Dashboard() {
             <FolderOpen className="w-5 h-5 text-primary" />
           </div>
         </Link>
-
         <Link
           to="/transactions"
-          className="stat-card p-4 flex items-center justify-between border border-border/60 hover:border-primary/30"
+          className="luxe-card p-4 flex items-center justify-between"
         >
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-muted-foreground tracking-wide">Add / Edit</div>
-            <div className="font-display font-bold text-xl mt-1">Expenses</div>
-            <div className="text-xs text-muted-foreground mt-1">Swipe to delete</div>
+            <div className="text-[10px] font-bold text-muted-foreground tracking-[0.16em] uppercase">Logs</div>
+            <div className="font-display font-bold text-xl mt-1">Entries</div>
+            <div className="text-xs text-muted-foreground mt-1">Filter & review</div>
           </div>
           <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center shrink-0">
             <DollarSign className="w-5 h-5 text-muted-foreground" />
@@ -143,39 +194,7 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Your financial command center.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <ReportButton size="sm" />
-          <div className="flex gap-0.5 bg-muted rounded-xl p-1">
-            {[7, 30, 90].map((d) => (
-              <button
-                key={d}
-                onClick={() => setRange(d)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  range === d
-                    ? "bg-white shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {d}D
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <KPI label="Revenue" value={fmt(totalRevenue)} icon={TrendingUp} color="emerald" />
-        <KPI label="Expenses" value={fmt(totalSpend)} icon={TrendingDown} accent />
-        <KPI label="Net Profit" value={fmt(netProfit)} icon={DollarSign} color={netProfit >= 0 ? "emerald" : "red"} />
-        <KPI label="Active Projects" value={activeProjects.length.toString()} icon={FolderOpen} />
-      </div>
+      {/* (KPI row promoted to hero) */}
 
       {/* AR/AP row */}
       <div className="grid grid-cols-2 gap-3 md:gap-4">
@@ -543,6 +562,21 @@ function DashboardSkeleton() {
         <Skeleton className="h-64 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
       </div>
+    </div>
+  );
+}
+
+function HeroStat({ label, value, tone, highlight }: { label: string; value: string; tone: "emerald" | "red" | "gold"; highlight?: boolean }) {
+  const toneClass =
+    tone === "emerald" ? "text-emerald-300" :
+    tone === "red" ? "text-red-300" :
+    "text-[hsl(41_78%_78%)]";
+  return (
+    <div className={cn("flex flex-col leading-tight", highlight && "md:border-l md:border-white/10 md:pl-6")}>
+      <span className="text-[9px] font-bold tracking-[0.20em] uppercase text-white/40">{label}</span>
+      <span className={cn("font-display font-bold text-[20px] md:text-[26px] tabular-nums tracking-tight mt-0.5", highlight ? toneClass : "text-white")}>
+        {value}
+      </span>
     </div>
   );
 }
