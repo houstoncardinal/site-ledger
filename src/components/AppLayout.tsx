@@ -236,22 +236,6 @@ export default function AppLayout() {
         <Outlet />
       </main>
 
-      {/* Floating Agent button (all devices) */}
-      <button
-        onClick={() => setAgentOpen(true)}
-        className="fixed z-50 right-4 md:right-6 bottom-[84px] md:bottom-6 h-12 px-4 rounded-2xl bg-[linear-gradient(135deg,hsl(0_84%_50%),hsl(0_84%_44%))] text-white shadow-lg shadow-red-500/30 hover:opacity-95 active:opacity-90 flex items-center gap-2"
-        aria-label="Open Agent"
-      >
-        <span className="w-2.5 h-2.5 rounded-full bg-white/90" />
-        <span className="font-display font-extrabold tracking-tight text-[13px]">Agent</span>
-        <span className={cn(
-          "text-[10px] font-bold px-2 py-0.5 rounded-full border",
-          aiEnabled ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-100" : "border-white/20 bg-white/10 text-white/70"
-        )}>
-          {aiEnabled ? "AI" : "OFF"}
-        </span>
-      </button>
-
       {/* ── MOBILE BOTTOM NAV ── */}
       <nav
         className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/70 bg-white/90 backdrop-blur-xl"
