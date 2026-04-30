@@ -35,6 +35,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 type Mode = "expense" | "income";
 type Step = "quick" | "pick" | "camera" | "form";
 
+interface LI { id: string; desc: string; qty: string; price: string; }
+
 interface LastEntry {
   mode: Mode;
   vendor: string;
@@ -245,6 +247,7 @@ export default function QuickAddSheet({
   const [quickQty, setQuickQty] = useState("");
   const [quickUnitPrice, setQuickUnitPrice] = useState("");
   const [lastEntry, setLastEntry] = useState<LastEntry | null>(null);
+  const [formLI, setFormLI] = useState<LI[]>([]);
 
   // AI voice assistant (guided)
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -363,6 +366,7 @@ export default function QuickAddSheet({
       setQuickQty("");
       setQuickUnitPrice("");
       setLastEntry(loadLastEntry());
+      setFormLI([]);
       setCameraPreview(null);
       setCameraFile(null);
       setAiResult(null);
@@ -592,6 +596,15 @@ export default function QuickAddSheet({
     return quickAmount;
   }, [mode, quickAmount, quickCategory, quickHours, quickRate, quickQty, quickUnitPrice]);
 
+  const addLI = useCallback(() => setFormLI(p => [...p, { id: Date.now().toString(), desc: "", qty: "", price: "" }]), []);
+  const removeLI = useCallback((id: string) => setFormLI(p => p.filter(li => li.id !== id)), []);
+  const updateLI = useCallback((id: string, k: keyof LI, v: string) =>
+    setFormLI(p => p.map(li => li.id === id ? { ...li, [k]: v } : li)), []);
+  const liTotal = useMemo(() =>
+    formLI.reduce((s, li) => s + (parseFloat(li.qty) || 0) * (parseFloat(li.price) || 0), 0),
+  [formLI]);
+  const hasLI = formLI.length > 0 && liTotal > 0;
+
   // ── Quick submit ──
   const submitQuick = async () => {
     const amount = parseFloat(quickComputedAmount);
@@ -643,12 +656,15 @@ export default function QuickAddSheet({
 
   // ── Full form submit ──
   const computedAmount = useMemo(() => {
-    if (mode === "expense" && category === "labor" && form.hours && form.rate)
-      return (parseFloat(form.hours) * parseFloat(form.rate)).toFixed(2);
-    if (mode === "expense" && category === "materials" && form.quantity && form.unit_price)
-      return (parseFloat(form.quantity) * parseFloat(form.unit_price)).toFixed(2);
+    if (mode === "expense") {
+      if (hasLI) return liTotal.toFixed(2);
+      if (category === "labor" && form.hours && form.rate)
+        return (parseFloat(form.hours) * parseFloat(form.rate)).toFixed(2);
+      if (category === "materials" && form.quantity && form.unit_price)
+        return (parseFloat(form.quantity) * parseFloat(form.unit_price)).toFixed(2);
+    }
     return form.amount;
-  }, [category, form, mode]);
+  }, [category, form, mode, hasLI, liTotal]);
 
   const handleReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -700,6 +716,25 @@ export default function QuickAddSheet({
 
     if (mode === "expense") {
       if (!form.vendor.trim()) return toast.error("Vendor is required");
+
+      // Auto-generate notes from line items breakdown
+      let notesValue = form.notes.trim() || null;
+      if (hasLI && formLI.length > 0) {
+        const lines = formLI
+          .filter(li => (parseFloat(li.qty) || 0) > 0 && (parseFloat(li.price) || 0) > 0)
+          .map(li => {
+            const q = parseFloat(li.qty);
+            const p = parseFloat(li.price);
+            const sub = q * p;
+            const desc = li.desc.trim() || (category === "labor" ? "Worker" : "Item");
+            return category === "labor"
+              ? `${desc}: ${q} hrs × $${p.toFixed(2)}/hr = $${sub.toFixed(2)}`
+              : `${desc}: ${q} × $${p.toFixed(2)} = $${sub.toFixed(2)}`;
+          });
+        const liNote = `${category === "labor" ? "Labor" : "Materials"} breakdown:\n${lines.join("\n")}\nTotal: $${liTotal.toFixed(2)}`;
+        notesValue = notesValue ? `${notesValue}\n\n${liNote}` : liNote;
+      }
+
       await createExpense.mutateAsync({
         project_id: form.project_id !== "none" ? form.project_id : null,
         account_id: form.account_id !== "none" ? form.account_id : null,
@@ -711,7 +746,7 @@ export default function QuickAddSheet({
         payment_method: form.payment_method,
         payment_status: form.payment_status,
         receipt_url: form.receipt_url || null,
-        notes: form.notes.trim() || null,
+        notes: notesValue,
         hours: form.hours ? parseFloat(form.hours) : null,
         rate: form.rate ? parseFloat(form.rate) : null,
         quantity: form.quantity ? parseFloat(form.quantity) : null,
@@ -824,7 +859,7 @@ export default function QuickAddSheet({
       <SheetContent
         side="bottom"
         className={cn(
-          "h-[96vh] sm:max-w-xl sm:mx-auto rounded-t-[28px] p-0 flex flex-col",
+          "h-[96vh] sm:h-[88vh] sm:max-w-[900px] sm:mx-auto rounded-t-[28px] sm:rounded-3xl p-0 flex flex-col",
           "border border-black/5",
           "bg-white shadow-2xl",
         )}
@@ -847,40 +882,8 @@ export default function QuickAddSheet({
               </button>
             )}
             {title}
-            {step === "quick" && (
-              <button
-                onClick={() => setStep("pick")}
-                className={cn(
-                  "hidden sm:inline-flex",
-                  "ml-auto inline-flex items-center gap-1",
-                  "h-9 px-3 rounded-xl",
-                  "bg-emerald-600 hover:bg-emerald-700",
-                  "text-xs font-semibold text-white",
-                  "border border-emerald-700/30",
-                  "shadow-sm hover:shadow transition"
-                )}
-              >
-                Advanced entry <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            )}
           </SheetTitle>
 
-          {/* Mobile: keep Advanced entry separate from the sheet close (X) button */}
-          {step === "quick" && (
-            <button
-              onClick={() => setStep("pick")}
-              className={cn(
-                "sm:hidden",
-                "mt-2 w-full inline-flex items-center justify-center gap-2",
-                "h-11 rounded-2xl",
-                "bg-emerald-600 hover:bg-emerald-700",
-                "text-sm font-semibold text-white",
-                "shadow-sm transition",
-              )}
-            >
-              Advanced entry <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
           <SheetDescription className="sr-only">
             {step === "quick" ? "Fast entry — 5 seconds" : "Full entry form"}
           </SheetDescription>
@@ -888,20 +891,36 @@ export default function QuickAddSheet({
 
         {/* ── QUICK MODE ── */}
         {step === "quick" && (
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
-            {/* Expense / Income toggle */}
-            <div className="flex gap-2">
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+            {/* Mode selector: Expense · Income · Advanced */}
+            <div className="flex gap-1 p-1 bg-muted/70 rounded-2xl">
               <button
                 onClick={() => setMode("expense")}
-                className={cn("flex-1 h-10 rounded-lg text-sm font-semibold transition", mode === "expense" ? "bg-gradient-primary text-white shadow-red" : "bg-muted text-muted-foreground hover:text-foreground")}
+                className={cn(
+                  "flex-1 h-9 rounded-xl text-sm font-semibold transition",
+                  mode === "expense"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
                 Expense
               </button>
               <button
                 onClick={() => setMode("income")}
-                className={cn("flex-1 h-10 rounded-lg text-sm font-semibold transition", mode === "income" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground hover:text-foreground")}
+                className={cn(
+                  "flex-1 h-9 rounded-xl text-sm font-semibold transition",
+                  mode === "income"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
                 Income
+              </button>
+              <button
+                onClick={() => setStep("pick")}
+                className="flex-1 h-9 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1 text-muted-foreground hover:text-foreground hover:bg-white/60"
+              >
+                Advanced <ChevronRight className="w-3 h-3" />
               </button>
             </div>
 
@@ -915,7 +934,7 @@ export default function QuickAddSheet({
                 placeholder="0.00"
                 value={quickComputedAmount}
                 onChange={(e) => setQuickAmount(e.target.value)}
-                className="w-full pl-10 pr-4 h-16 text-3xl font-display font-bold bg-muted rounded-xl border-2 border-transparent focus:border-primary outline-none transition"
+                className="w-full pl-10 pr-4 h-14 text-3xl font-display font-bold bg-muted rounded-xl border-2 border-transparent focus:border-primary outline-none transition"
               />
             </div>
 
@@ -925,7 +944,7 @@ export default function QuickAddSheet({
                 <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Project</label>
                 <div className="flex items-center gap-2">
                   <Select value={quickProject} onValueChange={setQuickProject}>
-                    <SelectTrigger className="h-11 bg-white border-black/10"><SelectValue placeholder="Project" /></SelectTrigger>
+                    <SelectTrigger className="h-10 bg-white border-black/10"><SelectValue placeholder="Project" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No project</SelectItem>
                       {activeProjects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -935,7 +954,7 @@ export default function QuickAddSheet({
                     type="button"
                     onClick={() => setProjectOpen(true)}
                     className={cn(
-                      "h-11 w-11 rounded-2xl shrink-0",
+                      "h-10 w-10 rounded-2xl shrink-0",
                       "bg-white",
                       "border border-black/10",
                       "text-foreground",
@@ -957,7 +976,7 @@ export default function QuickAddSheet({
                   type="date"
                   value={quickDate}
                   onChange={(e) => setQuickDate(e.target.value)}
-                  className="h-11 bg-white border-black/10"
+                  className="h-10 bg-white border-black/10"
                 />
               </div>
 
@@ -965,7 +984,7 @@ export default function QuickAddSheet({
                 <div className="space-y-1.5">
                   <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Category</label>
                   <Select value={quickCategory} onValueChange={(v) => setQuickCategory(v as ExpenseCategory)}>
-                    <SelectTrigger className="h-11 bg-white border-black/10"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10 bg-white border-black/10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map((k) => {
                         const Icon = CAT_META[k].icon;
@@ -984,7 +1003,7 @@ export default function QuickAddSheet({
               ) : (
                 <div className="space-y-1.5">
                   <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Status</label>
-                  <div className="h-11 rounded-2xl bg-white border border-black/10 flex items-center px-3 text-sm text-muted-foreground">
+                  <div className="h-10 rounded-2xl bg-white border border-black/10 flex items-center px-3 text-sm text-muted-foreground">
                     Paid income
                   </div>
                 </div>
@@ -993,28 +1012,34 @@ export default function QuickAddSheet({
 
             {/* Category-specific inputs (expense) */}
             {mode === "expense" && quickCategory === "labor" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Hours</Label>
-                  <Input value={quickHours} onChange={(e) => setQuickHours(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="e.g. 6" />
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Hours <span className="normal-case text-muted-foreground/50 font-normal">(optional)</span></Label>
+                    <Input value={quickHours} onChange={(e) => setQuickHours(e.target.value)} type="number" inputMode="decimal" className="h-10" placeholder="e.g. 6" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Rate <span className="normal-case text-muted-foreground/50 font-normal">(optional)</span></Label>
+                    <Input value={quickRate} onChange={(e) => setQuickRate(e.target.value)} type="number" inputMode="decimal" className="h-10" placeholder="$ / hr" />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Rate</Label>
-                  <Input value={quickRate} onChange={(e) => setQuickRate(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="$ / hr" />
-                </div>
+                <p className="text-[10px] text-muted-foreground/50 text-center">Leave blank to enter a total in the amount field above</p>
               </div>
             )}
 
             {mode === "expense" && quickCategory === "materials" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Quantity</Label>
-                  <Input value={quickQty} onChange={(e) => setQuickQty(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="e.g. 12" />
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Quantity <span className="normal-case text-muted-foreground/50 font-normal">(optional)</span></Label>
+                    <Input value={quickQty} onChange={(e) => setQuickQty(e.target.value)} type="number" inputMode="decimal" className="h-10" placeholder="e.g. 12" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Unit Price <span className="normal-case text-muted-foreground/50 font-normal">(optional)</span></Label>
+                    <Input value={quickUnitPrice} onChange={(e) => setQuickUnitPrice(e.target.value)} type="number" inputMode="decimal" className="h-10" placeholder="$" />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Unit Price</Label>
-                  <Input value={quickUnitPrice} onChange={(e) => setQuickUnitPrice(e.target.value)} type="number" inputMode="decimal" className="h-11" placeholder="$" />
-                </div>
+                <p className="text-[10px] text-muted-foreground/50 text-center">Leave blank to enter a total in the amount field above</p>
               </div>
             )}
 
@@ -1033,7 +1058,7 @@ export default function QuickAddSheet({
                   placeholder={mode === "income" ? "Client name" : "e.g. Home Depot"}
                   value={quickVendor}
                   onChange={(e) => handleVendorChange(e.target.value)}
-                  className="h-11 pr-[92px]"
+                  className="h-10 pr-[92px]"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                   <VendorPicker
@@ -1089,7 +1114,7 @@ export default function QuickAddSheet({
                   placeholder="Quick note…"
                   value={quickNote}
                   onChange={(e) => setQuickNote(e.target.value)}
-                  className="h-11 pr-10"
+                  className="h-10 pr-10"
                 />
                 {quickNoteVoice.supported && (
                   <button
@@ -1117,7 +1142,7 @@ export default function QuickAddSheet({
                 void requestCameraStream();
               }}
               className={cn(
-                "w-full flex items-center gap-2 h-11 rounded-2xl border border-dashed",
+                "w-full flex items-center gap-2 h-10 rounded-2xl border border-dashed",
                 "text-xs transition bg-white",
                 quickReceiptUrl
                   ? "border-primary/40 text-primary hover:border-primary"
@@ -1186,7 +1211,7 @@ export default function QuickAddSheet({
             {lastEntry && (
               <button
                 onClick={applyLastEntry}
-                className="w-full flex items-center gap-2 px-4 h-11 rounded-xl bg-muted/60 hover:bg-muted text-sm text-muted-foreground hover:text-foreground transition"
+                className="w-full flex items-center gap-2 px-4 h-9 rounded-xl bg-muted/60 hover:bg-muted text-sm text-muted-foreground hover:text-foreground transition"
               >
                 <Repeat2 className="w-4 h-4 shrink-0" />
                 <span className="flex-1 text-left truncate">
@@ -1200,57 +1225,64 @@ export default function QuickAddSheet({
 
         {/* ── PICK / ADVANCED CATEGORY SCREEN ── */}
         {step === "pick" && (
-          <div className="px-5 pb-5 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-1">
+            <div className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/50 mb-2.5">Entry Type</div>
+            <div className="grid grid-cols-2 gap-2.5 mb-5">
               <button
                 onClick={() => { setMode("income"); setStep("form"); }}
                 className={cn(
-                  "aspect-[2.2/1] rounded-2xl",
-                  "bg-emerald-600",
+                  "relative h-[100px] rounded-2xl overflow-hidden",
+                  "bg-gradient-to-br from-emerald-500 to-emerald-700",
                   "text-white p-4 flex flex-col justify-between text-left",
-                  "shadow-sm border border-emerald-700/30",
-                  "hover:bg-emerald-700",
-                  "active:scale-95 transition",
+                  "shadow-lg border border-emerald-400/20",
+                  "active:scale-[0.98] transition-all duration-150",
                 )}
               >
-                <DollarSign className="w-7 h-7" />
-                <div><div className="font-display font-bold text-lg">Income</div><div className="text-xs text-white/80">Client payment</div></div>
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.15),transparent)] pointer-events-none" />
+                <DollarSign className="w-6 h-6 text-emerald-100" />
+                <div>
+                  <div className="font-display font-bold text-base">Income</div>
+                  <div className="text-[11px] text-emerald-200/80 font-medium">Client payment · Invoice</div>
+                </div>
               </button>
               <button
                 onClick={() => { setMode("expense"); setCategory("other"); setStep("form"); }}
                 className={cn(
-                  "aspect-[2.2/1] rounded-2xl",
-                  "bg-surface-dark",
+                  "relative h-[100px] rounded-2xl overflow-hidden",
+                  "bg-gradient-to-br from-zinc-800 to-zinc-950",
                   "text-white p-4 flex flex-col justify-between text-left",
-                  "shadow-sm border border-black/10",
-                  "hover:opacity-95",
-                  "active:scale-95 transition",
+                  "shadow-lg border border-white/[0.06]",
+                  "active:scale-[0.98] transition-all duration-150",
                 )}
               >
-                <ReceiptIcon className="w-7 h-7" />
-                <div><div className="font-display font-bold text-lg">Expense</div><div className="text-xs text-white/80">Generic cost</div></div>
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.06),transparent)] pointer-events-none" />
+                <ReceiptIcon className="w-6 h-6 text-zinc-400" />
+                <div>
+                  <div className="font-display font-bold text-base">Expense</div>
+                  <div className="text-[11px] text-zinc-400/80 font-medium">General cost · Any type</div>
+                </div>
               </button>
             </div>
 
-            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2 mt-4">By Category</div>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/50 mb-2.5">By Category</div>
+            <div className="grid grid-cols-3 gap-2">
               {CATS.map((t) => (
                 <button
                   key={t.type}
                   onClick={() => { setMode("expense"); setCategory(t.type); setStep("form"); }}
                   className={cn(
-                    "aspect-square rounded-2xl",
-                    "bg-surface-dark",
+                    "relative h-[88px] rounded-2xl overflow-hidden",
+                    "bg-gradient-to-br from-zinc-800 to-zinc-950",
                     "text-white p-3 flex flex-col justify-between text-left",
-                    "shadow-sm border border-black/10",
-                    "hover:opacity-95",
-                    "active:scale-95 transition",
+                    "border border-white/[0.06] shadow-sm",
+                    "hover:from-zinc-700 hover:to-zinc-900",
+                    "active:scale-[0.97] transition-all duration-150",
                   )}
                 >
-                  <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
-                    <t.icon className="w-5 h-5" />
+                  <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br shrink-0", t.color)}>
+                    <t.icon className="w-4 h-4 text-white" />
                   </div>
-                  <div className="font-display font-bold text-sm leading-tight">{CATEGORY_LABELS[t.type]}</div>
+                  <div className="font-semibold text-xs leading-tight text-zinc-200">{CATEGORY_LABELS[t.type]}</div>
                 </button>
               ))}
             </div>
@@ -1263,7 +1295,7 @@ export default function QuickAddSheet({
                 setStep("camera");
                 void requestCameraStream();
               }}
-              className="mt-4 w-full flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition text-sm font-medium"
+              className="mt-4 w-full flex items-center justify-center gap-2 h-11 rounded-2xl border border-dashed border-primary/30 text-primary/70 hover:border-primary hover:text-primary hover:bg-primary/5 transition text-sm font-medium"
             >
               <Camera className="w-4 h-4" /> Start with a Receipt
             </button>
@@ -1272,140 +1304,169 @@ export default function QuickAddSheet({
 
         {/* ── CAMERA STEP ── */}
         {step === "camera" && (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 relative overflow-hidden bg-black">
             {cameraPreview ? (
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 relative bg-black">
-                  <img src={cameraPreview} alt="Receipt preview" className="w-full h-full object-contain" />
-                  {aiScanning && (
-                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3">
-                      <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
-                        <Sparkles className="w-7 h-7 text-white animate-pulse" />
-                      </div>
-                      <p className="text-white font-semibold text-sm">AI scanning receipt…</p>
-                      <p className="text-white/60 text-xs">Extracting vendor, address, date, totals & line items</p>
+              <>
+                <img src={cameraPreview} alt="Receipt preview" className="absolute inset-0 w-full h-full object-contain" />
+                {aiScanning && (
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
+                      <Sparkles className="w-7 h-7 text-white animate-pulse" />
                     </div>
-                  )}
-                </div>
-                {isAIEnabled() && !aiScanning && (
-                  <div className="px-5 pt-3 flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <p className="text-xs text-muted-foreground">AI will auto-fill vendor, address, date, totals, payment method and line items</p>
+                    <p className="text-white font-semibold text-sm">AI scanning receipt…</p>
+                    <p className="text-white/60 text-xs">Extracting vendor, date, totals &amp; line items</p>
                   </div>
                 )}
-                <div className="p-5 flex gap-3 border-t border-border bg-card">
-                  <Button variant="outline" onClick={retakePhoto} className="flex-1 h-12" disabled={uploading || aiScanning}>
-                    <RotateCcw className="w-4 h-4 mr-2" /> Retake
-                  </Button>
-                  <Button onClick={confirmCameraPhoto} className="flex-1 h-12 bg-gradient-primary" disabled={uploading || aiScanning}>
-                    {aiScanning ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing…</>
-                    ) : uploading ? (
-                      "Uploading…"
-                    ) : (
-                      <><Sparkles className="w-4 h-4 mr-2" />{isAIEnabled() ? "Scan & Fill" : "Use Photo"}</>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 relative bg-black overflow-hidden">
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                  <div className="absolute inset-6 pointer-events-none">
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white rounded-tl" />
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white rounded-tr" />
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white rounded-bl" />
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white rounded-br" />
+                {/* Bottom overlay: retake / use */}
+                <div className="absolute bottom-0 left-0 right-0 px-5 pb-10 pt-24 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-10">
+                  {isAIEnabled() && !aiScanning && (
+                    <div className="flex items-center gap-2 justify-center mb-4">
+                      <Sparkles className="w-3.5 h-3.5 text-primary/80 shrink-0" />
+                      <p className="text-xs text-white/60">AI will auto-fill all fields from this receipt</p>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={retakePhoto}
+                      className="flex-1 h-12 bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20 hover:text-white hover:border-white/30"
+                      disabled={uploading || aiScanning}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" /> Retake
+                    </Button>
+                    <Button
+                      onClick={confirmCameraPhoto}
+                      className="flex-1 h-12 bg-gradient-primary shadow-red"
+                      disabled={uploading || aiScanning}
+                    >
+                      {aiScanning ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing…</>
+                      ) : uploading ? (
+                        "Uploading…"
+                      ) : (
+                        <><Sparkles className="w-4 h-4 mr-2" />{isAIEnabled() ? "Scan & Fill" : "Use Photo"}</>
+                      )}
+                    </Button>
                   </div>
                 </div>
-                <div className="p-5 flex items-center justify-between border-t border-border bg-card">
-                  {/* Upload: PDF/JPG/PNG */}
-                  <label
-                    className="w-12 h-12 rounded-full bg-muted flex items-center justify-center cursor-pointer"
-                    title="Upload photo or PDF"
-                  >
-                    <ReceiptIcon className="w-5 h-5 text-muted-foreground" />
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
+              </>
+            ) : (
+              <>
+                <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
 
-                        // Stop live camera if active.
-                        stopCamera();
+                {/* Viewfinder corners */}
+                {cameraActive && (
+                  <div className="absolute inset-10 pointer-events-none z-10">
+                    <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-white/80 rounded-tl-lg" />
+                    <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-white/80 rounded-tr-lg" />
+                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-white/80 rounded-bl-lg" />
+                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-white/80 rounded-br-lg" />
+                  </div>
+                )}
 
-                        // PDFs: upload immediately (no preview/AI vision)
-                        if (file.type === "application/pdf") {
-                          setUploading(true);
-                          try {
-                            const url = await receiptsApi.upload(file);
-                            setForm((f) => ({ ...f, receipt_url: url }));
-                            setQuickReceiptUrl(url);
-                            toast.success("PDF attached");
-                            setStep(cameraReturnStep);
-                          } catch (err: any) {
-                            toast.error(err.message);
-                          } finally {
-                            setUploading(false);
-                          }
-                          return;
-                        }
+                {/* Camera inactive placeholder */}
+                {!cameraActive && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
+                    <div className="w-20 h-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
+                      <Camera className="w-10 h-10 text-white/50" />
+                    </div>
+                    <p className="text-white/50 text-sm font-medium">Tap below to enable camera</p>
+                  </div>
+                )}
 
-                        // Images: show preview, allow AI scan
-                        setCameraFile(file);
-                        const reader = new FileReader();
-                        reader.onload = (ev) => setCameraPreview(ev.target?.result as string);
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
+                {/* Overlay controls — Apple-style bottom bar */}
+                <div className="absolute bottom-0 left-0 right-0 px-8 pb-10 pt-32 bg-gradient-to-t from-black/85 via-black/40 to-transparent z-20">
+                  <div className="flex items-end justify-between">
+                    {/* Upload */}
+                    <div className="flex flex-col items-center gap-2">
+                      <label
+                        className="w-14 h-14 rounded-full bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center cursor-pointer hover:bg-white/25 active:scale-95 transition"
+                        title="Upload photo or PDF"
+                      >
+                        <ReceiptIcon className="w-6 h-6 text-white" />
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            stopCamera();
+                            if (file.type === "application/pdf") {
+                              setUploading(true);
+                              try {
+                                const url = await receiptsApi.upload(file);
+                                setForm((f) => ({ ...f, receipt_url: url }));
+                                setQuickReceiptUrl(url);
+                                toast.success("PDF attached");
+                                setStep(cameraReturnStep);
+                              } catch (err: any) {
+                                toast.error(err.message);
+                              } finally {
+                                setUploading(false);
+                              }
+                              return;
+                            }
+                            setCameraFile(file);
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setCameraPreview(ev.target?.result as string);
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                      <span className="text-[10px] text-white/50 font-medium tracking-wide">Upload</span>
+                    </div>
 
-                  {/* Camera action */}
-                  {!cameraActive ? (
-                    <button
-                      onClick={() => void requestCameraStream()}
-                      className="flex-1 mx-4 h-12 rounded-2xl bg-surface-dark text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition"
-                    >
-                      <Camera className="w-4 h-4" /> Enable camera
-                    </button>
-                  ) : (
-                    <button
-                      onClick={capturePhoto}
-                      className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 transition active:scale-90 flex items-center justify-center"
-                      title="Take photo"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-white" />
-                    </button>
-                  )}
+                    {/* Shutter */}
+                    <div className="flex flex-col items-center gap-2">
+                      {!cameraActive ? (
+                        <button
+                          onClick={() => void requestCameraStream()}
+                          className="w-20 h-20 rounded-full bg-white/20 backdrop-blur border-4 border-white/70 flex items-center justify-center hover:bg-white/30 active:scale-95 transition"
+                        >
+                          <Camera className="w-8 h-8 text-white" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={capturePhoto}
+                          className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition hover:scale-95"
+                          title="Take photo"
+                        >
+                          <div className="w-[64px] h-[64px] rounded-full bg-white" />
+                        </button>
+                      )}
+                      <span className="text-[10px] text-white/50 font-medium tracking-wide">{cameraActive ? "Capture" : "Allow Camera"}</span>
+                    </div>
 
-                  {/* Fallback to manual form */}
-                  <button
-                    onClick={() => {
-                      stopCamera();
-                      setCameraPreview(null);
-                      setCameraFile(null);
-                      setStep("form");
-                    }}
-                    className="w-12 h-12 rounded-full bg-muted flex items-center justify-center"
-                    title="Skip camera"
-                  >
-                    <X className="w-5 h-5 text-muted-foreground" />
-                  </button>
+                    {/* Manual entry */}
+                    <div className="flex flex-col items-center gap-2">
+                      <button
+                        onClick={() => {
+                          stopCamera();
+                          setCameraPreview(null);
+                          setCameraFile(null);
+                          setStep("form");
+                        }}
+                        className="w-14 h-14 rounded-full bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center hover:bg-white/25 active:scale-95 transition"
+                        title="Enter manually"
+                      >
+                        <X className="w-6 h-6 text-white" />
+                      </button>
+                      <span className="text-[10px] text-white/50 font-medium tracking-wide">Manual</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
 
         {/* ── FULL FORM ── */}
         {step === "form" && (
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <Field label="Project">
               <Select value={form.project_id} onValueChange={(v) => setForm({ ...form, project_id: v })}>
-                <SelectTrigger className="h-12"><SelectValue placeholder="Select project" /></SelectTrigger>
+                <SelectTrigger className="h-10"><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No project</SelectItem>
                   {activeProjects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -1415,11 +1476,11 @@ export default function QuickAddSheet({
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Date" required>
-                <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="h-12" />
+                <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="h-10" />
               </Field>
               <Field label="Account">
                 <Select value={form.account_id} onValueChange={(v) => setForm({ ...form, account_id: v })}>
-                  <SelectTrigger className="h-12"><SelectValue placeholder="Account" /></SelectTrigger>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="Account" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">—</SelectItem>
                     {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -1441,13 +1502,13 @@ export default function QuickAddSheet({
                         if (cat) setCategory(cat);
                       }
                     }}
-                    className="h-12"
+                    className="h-10"
                   />
                 </Field>
 
                 <Field label="Category" required>
                   <Select value={category} onValueChange={(v) => setCategory(v as ExpenseCategory)}>
-                    <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map((k) => (
                         <SelectItem key={k} value={k}>{CATEGORY_LABELS[k]}</SelectItem>
@@ -1456,36 +1517,82 @@ export default function QuickAddSheet({
                   </Select>
                 </Field>
 
+                {/* Labor fields + optional line items */}
                 {category === "labor" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Hours" required>
-                      <Input type="number" inputMode="decimal" value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} className="h-12" />
-                    </Field>
-                    <Field label="Rate ($/hr)" required>
-                      <Input type="number" inputMode="decimal" value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} className="h-12" />
+                  <div className="space-y-2">
+                    {formLI.length === 0 && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Hours">
+                          <Input type="number" inputMode="decimal" value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} className="h-10" placeholder="0" />
+                        </Field>
+                        <Field label="Rate ($/hr)">
+                          <Input type="number" inputMode="decimal" value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} className="h-10" placeholder="0.00" />
+                        </Field>
+                      </div>
+                    )}
+                    <LineItemsBlock type="labor" items={formLI} total={liTotal} onAdd={addLI} onRemove={removeLI} onChange={updateLI} />
+                    <Field label="Amount ($)" required>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          value={computedAmount}
+                          onChange={(e) => { if (!hasLI && !(form.hours && form.rate)) setForm({ ...form, amount: e.target.value }); }}
+                          readOnly={hasLI || !!(form.hours && form.rate)}
+                          className={cn("h-10 text-lg font-semibold", (hasLI || !!(form.hours && form.rate)) ? "bg-muted/50 cursor-default" : "")}
+                          placeholder="0.00"
+                        />
+                        {(hasLI || !!(form.hours && form.rate)) && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">Auto</span>
+                        )}
+                      </div>
                     </Field>
                   </div>
                 )}
+
+                {/* Materials fields + optional line items */}
                 {category === "materials" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Quantity" required>
-                      <Input type="number" inputMode="decimal" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className="h-12" />
-                    </Field>
-                    <Field label="Unit Price" required>
-                      <Input type="number" inputMode="decimal" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: e.target.value })} className="h-12" />
+                  <div className="space-y-2">
+                    {formLI.length === 0 && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Qty">
+                          <Input type="number" inputMode="decimal" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className="h-10" placeholder="0" />
+                        </Field>
+                        <Field label="Unit Price">
+                          <Input type="number" inputMode="decimal" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: e.target.value })} className="h-10" placeholder="0.00" />
+                        </Field>
+                      </div>
+                    )}
+                    <LineItemsBlock type="materials" items={formLI} total={liTotal} onAdd={addLI} onRemove={removeLI} onChange={updateLI} />
+                    <Field label="Amount ($)" required>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          value={computedAmount}
+                          onChange={(e) => { if (!hasLI && !(form.quantity && form.unit_price)) setForm({ ...form, amount: e.target.value }); }}
+                          readOnly={hasLI || !!(form.quantity && form.unit_price)}
+                          className={cn("h-10 text-lg font-semibold", (hasLI || !!(form.quantity && form.unit_price)) ? "bg-muted/50 cursor-default" : "")}
+                          placeholder="0.00"
+                        />
+                        {(hasLI || !!(form.quantity && form.unit_price)) && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">Auto</span>
+                        )}
+                      </div>
                     </Field>
                   </div>
                 )}
+
                 {category !== "labor" && category !== "materials" && (
                   <Field label="Amount ($)" required>
-                    <Input type="number" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="h-12 text-lg font-semibold" />
+                    <Input type="number" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="h-10 text-lg font-semibold" placeholder="0.00" />
                   </Field>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Payment">
                     <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
-                      <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                       </SelectContent>
@@ -1493,7 +1600,7 @@ export default function QuickAddSheet({
                   </Field>
                   <Field label="Status">
                     <Select value={form.payment_status} onValueChange={(v) => setForm({ ...form, payment_status: v as any })}>
-                      <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="unpaid">Unpaid</SelectItem>
@@ -1505,18 +1612,18 @@ export default function QuickAddSheet({
             ) : (
               <>
                 <Field label="Client">
-                  <Input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} className="h-12" placeholder="Client name" />
+                  <Input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} className="h-10" placeholder="Client name" />
                 </Field>
                 <Field label="Amount ($)" required>
-                  <Input type="number" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="h-12 text-lg font-semibold" />
+                  <Input type="number" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="h-10 text-lg font-semibold" />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Invoice #">
-                    <Input value={form.invoice_number} onChange={(e) => setForm({ ...form, invoice_number: e.target.value })} className="h-12" />
+                    <Input value={form.invoice_number} onChange={(e) => setForm({ ...form, invoice_number: e.target.value })} className="h-10" />
                   </Field>
                   <Field label="Status">
                     <Select value={form.payment_status} onValueChange={(v) => setForm({ ...form, payment_status: v as any })}>
-                      <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="unpaid">Unpaid</SelectItem>
@@ -1533,7 +1640,7 @@ export default function QuickAddSheet({
                 <Input
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="h-12 pr-10"
+                  className="h-10 pr-10"
                   placeholder="Optional"
                 />
                 {descVoice.supported && (
@@ -1555,7 +1662,7 @@ export default function QuickAddSheet({
 
             {mode === "expense" && (
               <Field label="Receipt">
-                <label className="flex items-center justify-center gap-2 h-12 border border-dashed rounded-md cursor-pointer hover:border-primary hover:text-primary transition text-sm">
+                <label className="flex items-center justify-center gap-2 h-10 border border-dashed rounded-md cursor-pointer hover:border-primary hover:text-primary transition text-sm">
                   <Camera className="w-4 h-4" />
                   {uploading ? "Uploading…" : form.receipt_url ? "✓ Receipt attached" : "Tap to capture or upload"}
                   <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handleReceipt} />
@@ -1724,6 +1831,111 @@ export default function QuickAddSheet({
         </Sheet>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function LineItemsBlock({
+  type,
+  items,
+  total,
+  onAdd,
+  onRemove,
+  onChange,
+}: {
+  type: "labor" | "materials";
+  items: { id: string; desc: string; qty: string; price: string }[];
+  total: number;
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+  onChange: (id: string, k: string, v: string) => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onAdd}
+        className={cn(
+          "w-full h-9 flex items-center justify-center gap-2 rounded-xl",
+          "border border-dashed border-primary/25 text-xs font-medium",
+          "text-primary/60 hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition",
+        )}
+      >
+        <Plus className="w-3.5 h-3.5" />
+        {type === "labor" ? "Multiple workers or tasks? Add line items" : "Multiple items or mixed invoice? Add line items"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border/60 overflow-hidden bg-white">
+      <div className="bg-muted/50 px-3 py-2 flex items-center justify-between border-b border-border/40">
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+          {type === "labor" ? "Labor Breakdown" : "Materials Breakdown"}
+        </span>
+        <span className="text-xs font-bold tabular-nums text-foreground">
+          ${total.toFixed(2)}
+        </span>
+      </div>
+      <div className="px-2.5 pt-2 pb-1">
+        <div className="grid grid-cols-[1fr_64px_68px_60px_24px] gap-1 mb-1.5 px-0.5">
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground/50">Description</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground/50 text-center">{type === "labor" ? "Hrs" : "Qty"}</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground/50 text-right">{type === "labor" ? "$/hr" : "Unit $"}</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground/50 text-right">Total</span>
+          <span />
+        </div>
+        <div className="space-y-1.5">
+          {items.map((li) => {
+            const q = parseFloat(li.qty) || 0;
+            const p = parseFloat(li.price) || 0;
+            const sub = q * p;
+            return (
+              <div key={li.id} className="grid grid-cols-[1fr_64px_68px_60px_24px] gap-1 items-center">
+                <Input
+                  value={li.desc}
+                  onChange={(e) => onChange(li.id, "desc", e.target.value)}
+                  placeholder={type === "labor" ? "Worker / role" : "Item"}
+                  className="h-8 text-xs px-2"
+                />
+                <Input
+                  value={li.qty}
+                  onChange={(e) => onChange(li.id, "qty", e.target.value)}
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
+                  className="h-8 text-xs text-center px-1"
+                />
+                <Input
+                  value={li.price}
+                  onChange={(e) => onChange(li.id, "price", e.target.value)}
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="h-8 text-xs text-right px-2"
+                />
+                <span className={cn("text-xs tabular-nums text-right font-medium pr-0.5", sub > 0 ? "text-foreground/80" : "text-muted-foreground/40")}>
+                  {sub > 0 ? `$${sub.toFixed(2)}` : "—"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onRemove(li.id)}
+                  className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-foreground transition"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="mt-2 mb-1 w-full h-7 flex items-center gap-1.5 px-2 rounded-lg border border-dashed border-muted-foreground/20 text-[11px] text-muted-foreground/60 hover:border-primary/40 hover:text-primary/70 transition"
+        >
+          <Plus className="w-3 h-3" /> Add row
+        </button>
+      </div>
+    </div>
   );
 }
 
