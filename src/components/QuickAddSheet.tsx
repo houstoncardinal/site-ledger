@@ -923,6 +923,30 @@ export default function QuickAddSheet({
                 {guided ? "Guided · ON" : "Guided mode"}
               </button>
             </div>
+
+            {/* ── Guided (gamified) overlay ── */}
+            {guided && (
+              <GuidedWizard
+                mode={mode}
+                setMode={setMode}
+                step={guidedStep}
+                setStep={setGuidedStep}
+                amount={quickAmount}
+                setAmount={setQuickAmount}
+                vendor={quickVendor}
+                onVendorChange={handleVendorChange}
+                category={quickCategory}
+                setCategory={setQuickCategory}
+                projectId={quickProject}
+                setProjectId={setQuickProject}
+                projects={activeProjects as any}
+                date={quickDate}
+                setDate={setQuickDate}
+                onSubmit={submitQuick}
+                pending={pending}
+                onExit={() => setGuided(false)}
+              />
+            )}
             {/* Mode selector: Expense · Income · Advanced */}
             <div className="flex gap-1 p-1 bg-muted/70 rounded-2xl">
               <button
