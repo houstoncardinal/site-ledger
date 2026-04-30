@@ -856,9 +856,12 @@ export default function QuickAddSheet({
       <SheetContent
         side="bottom"
         className={cn(
-          "h-[96vh] sm:h-[88vh] sm:max-w-[900px] sm:mx-auto rounded-t-[28px] sm:rounded-3xl p-0 flex flex-col",
-          "border border-black/5",
-          "bg-white shadow-2xl",
+          "h-[96vh] sm:h-auto sm:max-h-[88vh] sm:max-w-[900px] p-0 flex flex-col",
+          "rounded-t-[28px] sm:rounded-3xl",
+          "border border-black/5 bg-white shadow-2xl",
+          // Center on desktop instead of sticking to the bottom
+          "sm:!bottom-auto sm:!top-1/2 sm:!left-1/2 sm:!-translate-x-1/2 sm:!-translate-y-1/2 sm:!inset-x-auto",
+          "sm:data-[state=open]:slide-in-from-bottom-2 sm:data-[state=closed]:slide-out-to-bottom-2",
         )}
       >
         {/* top spacer (no stripe) */}
