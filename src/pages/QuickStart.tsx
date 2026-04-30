@@ -122,17 +122,24 @@ export default function QuickStart() {
   const fmt = (n: number) => `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   return (
-    <div className="px-4 py-5 md:px-8 md:py-6 max-w-5xl mx-auto space-y-5">
+    <div className="px-4 py-5 md:px-8 md:py-7 max-w-6xl mx-auto space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Quick Start</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">{format(now, "EEEE, MMMM d")} · {stats.activeProjects} active project{stats.activeProjects !== 1 ? "s" : ""}</p>
+      <div className="flex items-end justify-between gap-3">
+        <div className="animate-rise">
+          <div className="text-[10px] font-bold tracking-[0.22em] uppercase text-muted-foreground/70">
+            Workspace · {format(now, "EEEE")}
+          </div>
+          <h1 className="font-display text-3xl md:text-[40px] font-bold tracking-[-0.02em] mt-1">
+            Quick <span className="font-serif-luxe italic text-gold">Start</span>
+          </h1>
+          <p className="text-muted-foreground text-[13px] mt-1">
+            {format(now, "MMMM d, yyyy")} · {stats.activeProjects} active project{stats.activeProjects !== 1 ? "s" : ""} · {stats.vendorCount} vendor{stats.vendorCount !== 1 ? "s" : ""}
+          </p>
         </div>
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-2xl bg-surface-dark text-white hover:opacity-90 transition shadow-sm text-sm font-medium shrink-0"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-2xl bg-[hsl(var(--ink))] text-white hover:bg-[hsl(var(--ink-soft))] transition shadow-md text-[13px] font-semibold shrink-0"
         >
           <LayoutDashboard className="w-4 h-4" /> Dashboard
         </Link>
