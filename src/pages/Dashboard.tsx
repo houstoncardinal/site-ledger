@@ -154,7 +154,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="rule-gold" />
+        <div className="h-px w-full bg-[linear-gradient(90deg,transparent,hsl(0_82%_48%/0.55)_30%,hsl(0_0%_100%/0.7)_50%,hsl(0_82%_48%/0.55)_70%,transparent)]" />
         {/* Live KPI strip in hero */}
         <div className="relative z-10 px-5 md:px-9 py-3.5 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 bg-black/20 backdrop-blur-xl">
           <HeroStat label="Revenue" value={fmt(totalRevenue)} tone="emerald" />
