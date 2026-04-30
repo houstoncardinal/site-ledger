@@ -58,12 +58,12 @@
     --gradient-dark: linear-gradient(160deg, hsl(220 25% 8%), hsl(220 22% 14%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 97%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 99%) 100%);
-    --gradient-luxe: linear-gradient(135deg, hsl(220 25% 8%) 0%, hsl(220 22% 14%) 45%, hsl(0 60% 22%) 100%);
-    --gradient-aurora: radial-gradient(900px circle at 12% -10%, hsl(0 82% 48% / 0.32), transparent 55%),
-                       radial-gradient(700px circle at 88% 20%, hsl(41 70% 52% / 0.18), transparent 55%),
-                       radial-gradient(600px circle at 50% 110%, hsl(220 70% 40% / 0.20), transparent 60%);
+    --gradient-luxe: linear-gradient(135deg, hsl(0 0% 5%) 0%, hsl(0 0% 9%) 40%, hsl(0 60% 16%) 75%, hsl(0 78% 30%) 100%);
+    --gradient-aurora: radial-gradient(900px circle at 12% -10%, hsl(0 82% 48% / 0.38), transparent 55%),
+                       radial-gradient(700px circle at 88% 20%, hsl(0 0% 100% / 0.10), transparent 55%),
+                       radial-gradient(600px circle at 50% 110%, hsl(0 70% 28% / 0.45), transparent 60%);
     --gradient-gold: linear-gradient(135deg, hsl(41 78% 68%) 0%, hsl(41 70% 52%) 50%, hsl(36 60% 38%) 100%);
-    --gradient-text-luxe: linear-gradient(120deg, hsl(0 0% 100%) 0%, hsl(41 78% 88%) 40%, hsl(0 0% 100%) 80%);
+    --gradient-text-luxe: linear-gradient(120deg, hsl(0 0% 100%) 0%, hsl(0 0% 88%) 40%, hsl(0 0% 100%) 80%);
 
     /* ─── Elevation / Shadows ─── */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
