@@ -145,125 +145,88 @@ export default function QuickStart() {
         </Link>
       </div>
 
-      {/* ── Hero / primary CTA ── */}
-      <section className="relative rounded-[28px] overflow-hidden hero-luxe animate-rise">
-        {/* Floating orbs */}
-        <div aria-hidden className="pointer-events-none absolute -top-24 -left-16 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-float-slow z-0" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-12 w-80 h-80 rounded-full bg-[hsl(41_70%_52%/0.18)] blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.5s" }} />
-        {/* Subtle grid */}
-        <div aria-hidden className="absolute inset-0 z-0 opacity-[0.07] mix-blend-overlay"
-          style={{
-            backgroundImage:
-              "linear-gradient(hsl(0 0% 100% / 0.7) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100% / 0.7) 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
-            maskImage: "radial-gradient(ellipse at 50% 30%, black 40%, transparent 80%)",
-          }}
-        />
-
-        <div className="relative z-10 px-6 md:px-10 pt-8 md:pt-10 pb-7 md:pb-9">
-          {/* Top row: brand mark + meta */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="pill-gold animate-glow-pulse">
-                <Sparkles className="w-3.5 h-3.5" />
-                Built for the jobsite
-              </div>
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-white/40">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live ledger
-              </span>
-            </div>
-            <div className="hidden md:block text-[10px] font-semibold tracking-[0.18em] uppercase text-white/30">
-              {format(now, "MMM d · yyyy").toUpperCase()}
-            </div>
-          </div>
-
-          {/* Headline */}
-          <h2 className="font-display font-bold text-[34px] md:text-[56px] leading-[0.98] tracking-[-0.025em] max-w-3xl">
-            <span className="block text-white/95">Fast, accurate</span>
-            <span className="block">
-              <span className="font-serif-luxe italic text-luxe-shimmer">bookkeeping.</span>
-            </span>
-            <span className="block text-white/55 text-[22px] md:text-[30px] font-medium tracking-tight mt-3">
-              No accountant required.
-            </span>
-          </h2>
-
-          {/* Hairline rule */}
-          <div className="rule-gold mt-6 md:mt-7 max-w-[420px]" />
-
-          {/* Sub copy */}
-          <p className="text-white/55 mt-5 text-[14px] md:text-[15px] max-w-xl leading-relaxed">
-            Capture expenses in seconds, scan receipts on site, and watch project profit move in real time —
-            engineered for the field, designed like a private office.
-          </p>
-
-          {/* CTAs */}
-          <div className="mt-7 flex flex-wrap gap-2.5">
-            <Button
-              onClick={() => openAction("expense")}
-              className="h-11 rounded-2xl bg-gradient-primary shadow-red font-semibold text-[13px] px-5 hover:scale-[1.02] active:scale-[0.98] transition-transform"
-            >
-              <Plus className="w-4 h-4 mr-1.5" /> Log Expense
-            </Button>
-            <Button
-              onClick={() => openAction("receipt")}
-              variant="outline"
-              className="h-11 rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/15 hover:text-white font-semibold text-[13px] px-5 backdrop-blur"
-            >
-              <Camera className="w-4 h-4 mr-1.5" /> Scan Receipt
-            </Button>
-            <Button
-              onClick={() => openAction("project")}
-              variant="outline"
-              className="h-11 rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/15 hover:text-white font-semibold text-[13px] px-5 backdrop-blur"
-            >
-              <FolderKanban className="w-4 h-4 mr-1.5" /> New Project
-            </Button>
+      {/* ── Quick action tiles · luxury glass ── */}
+      <div className="animate-rise">
+        <div className="flex items-end justify-between mb-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] font-bold text-muted-foreground/70">Quick Actions</div>
+          <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live ledger
           </div>
         </div>
-
-        {/* Live stat strip */}
-        <div className="relative z-10 border-t border-white/[0.08] bg-black/25 backdrop-blur-xl px-5 md:px-10 py-3.5">
-          <div className="flex items-center gap-7 overflow-x-auto">
-            <Stat label="Spent · MTD" value={fmt(stats.totalSpentMonth)} icon={TrendingDown} tone="red" />
-            <Divider />
-            <Stat label="Income · MTD" value={fmt(stats.totalIncomeMonth)} icon={TrendingUp} tone="emerald" />
-            <Divider />
-            <Stat label="Net" value={`${stats.net >= 0 ? "+" : "−"}${fmt(Math.abs(stats.net))}`} icon={Activity} tone={stats.net >= 0 ? "emerald" : "red"} />
-            <Divider />
-            <Stat label="Active jobs" value={stats.activeProjects.toString()} icon={Layers} tone="gold" />
-            <Divider />
-            <Stat label="Today" value={stats.todayTotal > 0 ? fmt(stats.todayTotal) : "—"} icon={Clock} tone="muted" />
-          </div>
-        </div>
-      </section>
-
-      {/* ── Quick action tiles ── */}
-      <div>
-        <div className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/50 mb-2.5">Quick Actions</div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {[
-            { key: "expense" as ActionKey, icon: Receipt, label: "Log Expense", sub: "Fast entry", color: "from-red-500 to-rose-700", iconColor: "text-rose-100" },
-            { key: "receipt" as ActionKey, icon: Camera, label: "Scan Receipt", sub: "Camera or upload", color: "from-violet-500 to-violet-700", iconColor: "text-violet-100" },
-            { key: "project" as ActionKey, icon: FolderKanban, label: "New Project", sub: "Track a job", color: "from-blue-500 to-blue-700", iconColor: "text-blue-100" },
-            { key: "vendor" as ActionKey, icon: Users, label: "Add Vendor", sub: "Reuse in Quick Add", color: "from-amber-500 to-orange-600", iconColor: "text-amber-100" },
-          ].map((a) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {([
+            { key: "expense" as ActionKey, icon: Receipt, label: "Log Expense", sub: "Fast entry · 5s", accent: "hsl(0 82% 48%)", glowA: "hsl(0 82% 48% / 0.55)", glowB: "hsl(0 88% 58% / 0.35)" },
+            { key: "receipt" as ActionKey, icon: Camera, label: "Scan Receipt", sub: "Camera or upload", accent: "hsl(41 70% 52%)", glowA: "hsl(41 78% 68% / 0.55)", glowB: "hsl(41 60% 40% / 0.35)" },
+            { key: "project" as ActionKey, icon: FolderKanban, label: "New Project", sub: "Track a job", accent: "hsl(0 0% 95%)", glowA: "hsl(0 0% 100% / 0.45)", glowB: "hsl(0 0% 50% / 0.25)" },
+            { key: "vendor" as ActionKey, icon: Users, label: "Add Vendor", sub: "Reuse anywhere", accent: "hsl(0 70% 55%)", glowA: "hsl(0 82% 48% / 0.45)", glowB: "hsl(41 70% 52% / 0.30)" },
+          ]).map((a, i) => (
             <button
               key={a.key}
               onClick={() => openAction(a.key)}
+              style={{ animationDelay: `${0.05 + i * 0.06}s` }}
               className={cn(
-                "group relative h-[90px] rounded-2xl overflow-hidden text-left p-3.5 flex flex-col justify-between",
-                "bg-gradient-to-br", a.color,
-                "border border-white/10 shadow-sm",
-                "active:scale-[0.97] transition-all duration-150",
+                "group relative h-[124px] sm:h-[136px] rounded-[22px] overflow-hidden text-left",
+                "animate-rise active:scale-[0.97] transition-all duration-200",
+                "hover:-translate-y-0.5",
               )}
             >
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent)] pointer-events-none" />
-              <a.icon className={cn("w-5 h-5", a.iconColor)} />
-              <div>
-                <div className="font-display font-bold text-sm text-white leading-tight">{a.label}</div>
-                <div className="text-[11px] text-white/60 font-medium">{a.sub}</div>
+              {/* Glass base — dark luxe with sheen */}
+              <div className="absolute inset-0 rounded-[22px] bg-[linear-gradient(160deg,hsl(220_25%_10%)_0%,hsl(220_22%_14%)_55%,hsl(0_0%_5%)_100%)]" />
+              {/* Aurora glow */}
+              <div
+                aria-hidden
+                className="absolute inset-0 rounded-[22px] opacity-90"
+                style={{
+                  backgroundImage: `radial-gradient(120% 80% at 0% 0%, ${a.glowA}, transparent 55%), radial-gradient(120% 80% at 100% 100%, ${a.glowB}, transparent 60%)`,
+                }}
+              />
+              {/* Glass sheen */}
+              <div
+                aria-hidden
+                className="absolute inset-0 rounded-[22px] opacity-70 mix-blend-overlay"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(180deg, hsl(0 0% 100% / 0.18) 0%, hsl(0 0% 100% / 0.04) 32%, transparent 60%)",
+                }}
+              />
+              {/* Hairline gold border */}
+              <div
+                aria-hidden
+                className="absolute inset-0 rounded-[22px]"
+                style={{
+                  padding: "1px",
+                  background:
+                    "linear-gradient(140deg, hsl(41 78% 78% / 0.55), hsl(0 0% 100% / 0.05) 35%, hsl(0 0% 100% / 0.02) 65%, hsl(0 82% 48% / 0.45))",
+                  WebkitMask:
+                    "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+                  WebkitMaskComposite: "xor" as any,
+                  maskComposite: "exclude" as any,
+                  pointerEvents: "none",
+                }}
+              />
+              {/* Specular highlight on hover */}
+              <div
+                aria-hidden
+                className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{
+                  background:
+                    "radial-gradient(220px circle at var(--x,50%) var(--y,0%), hsl(0 0% 100% / 0.10), transparent 60%)",
+                }}
+              />
+
+              {/* Content */}
+              <div className="relative z-10 h-full p-4 flex flex-col justify-between">
+                <div className="flex items-start justify-between">
+                  <div className="w-10 h-10 rounded-2xl bg-white/8 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-inner">
+                    <a.icon className="w-[18px] h-[18px] text-white/95" strokeWidth={2} />
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 group-hover:translate-x-0.5 transition" />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-[15px] text-white leading-tight tracking-tight">{a.label}</div>
+                  <div className="text-[11px] text-white/55 font-medium mt-0.5 tracking-wide">{a.sub}</div>
+                </div>
               </div>
             </button>
           ))}
