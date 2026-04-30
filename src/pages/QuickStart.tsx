@@ -420,3 +420,26 @@ export default function QuickStart() {
     </div>
   );
 }
+
+function Divider() {
+  return <span aria-hidden className="w-px h-5 bg-white/10 shrink-0" />;
+}
+
+function Stat({
+  label, value, icon: Icon, tone = "muted",
+}: { label: string; value: string; icon: any; tone?: "red" | "emerald" | "gold" | "muted" }) {
+  const toneClass =
+    tone === "red" ? "text-red-300" :
+    tone === "emerald" ? "text-emerald-300" :
+    tone === "gold" ? "text-[hsl(41_78%_78%)]" :
+    "text-white/55";
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <Icon className={cn("w-3.5 h-3.5", toneClass)} />
+      <div className="flex flex-col leading-tight">
+        <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-white/40">{label}</span>
+        <span className="text-[13px] font-bold text-white tabular-nums">{value}</span>
+      </div>
+    </div>
+  );
+}
