@@ -194,13 +194,7 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <KPI label="Revenue" value={fmt(totalRevenue)} icon={TrendingUp} color="emerald" />
-        <KPI label="Expenses" value={fmt(totalSpend)} icon={TrendingDown} accent />
-        <KPI label="Net Profit" value={fmt(netProfit)} icon={DollarSign} color={netProfit >= 0 ? "emerald" : "red"} />
-        <KPI label="Active Projects" value={activeProjects.length.toString()} icon={FolderOpen} />
-      </div>
+      {/* (KPI row promoted to hero) */}
 
       {/* AR/AP row */}
       <div className="grid grid-cols-2 gap-3 md:gap-4">
