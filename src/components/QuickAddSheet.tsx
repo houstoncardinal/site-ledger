@@ -2004,3 +2004,191 @@ function Field({ label, required, children }: { label: string; required?: boolea
     </div>
   );
 }
+
+// ─── Guided Wizard (gamified single-field flow) ─────────────────────────────
+
+function GuidedWizard({
+  mode, setMode, step, setStep,
+  amount, setAmount, vendor, onVendorChange,
+  category, setCategory, projectId, setProjectId, projects,
+  date, setDate, onSubmit, pending, onExit,
+}: {
+  mode: Mode; setMode: (m: Mode) => void;
+  step: number; setStep: (n: number) => void;
+  amount: string; setAmount: (v: string) => void;
+  vendor: string; onVendorChange: (v: string) => void;
+  category: ExpenseCategory; setCategory: (c: ExpenseCategory) => void;
+  projectId: string; setProjectId: (v: string) => void;
+  projects: { id: string; name: string }[];
+  date: string; setDate: (v: string) => void;
+  onSubmit: () => void; pending: boolean; onExit: () => void;
+}) {
+  const steps = mode === "expense"
+    ? ["Amount", "Vendor", "Category", "Project", "Date", "Review"]
+    : ["Amount", "Client", "Project", "Date", "Review"];
+  const i = Math.min(step, steps.length - 1);
+  const pct = ((i + 1) / steps.length) * 100;
+  const next = () => setStep(Math.min(i + 1, steps.length - 1));
+  const prev = () => setStep(Math.max(i - 1, 0));
+  const canAdvance = (): boolean => {
+    const k = steps[i];
+    if (k === "Amount") return parseFloat(amount || "0") > 0;
+    if (k === "Vendor" || k === "Client") return vendor.trim().length > 0;
+    if (k === "Category") return !!category;
+    if (k === "Project") return true;
+    if (k === "Date") return !!date;
+    return true;
+  };
+  // Auto-advance on field completion
+  useEffect(() => {
+    const k = steps[i];
+    if (k === "Amount" && parseFloat(amount || "0") > 0) {
+      const id = setTimeout(() => setStep(Math.min(i + 1, steps.length - 1)), 600);
+      return () => clearTimeout(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amount]);
+
+  return (
+    <div className="absolute inset-0 z-30 bg-white animate-fade-in flex flex-col">
+      {/* Top bar with progress + exit */}
+      <div className="px-5 pt-5 pb-3 border-b border-border/60">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground/70">
+              Step {i + 1} of {steps.length}
+            </span>
+            <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-primary">
+              · {steps[i]}
+            </span>
+          </div>
+          <button onClick={onExit} className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition flex items-center gap-1">
+            Exit guided <X className="w-3 h-3" />
+          </button>
+        </div>
+        {/* Progress dots + bar */}
+        <div className="flex gap-1.5 items-center">
+          {steps.map((_, idx) => (
+            <div key={idx} className={cn(
+              "h-1.5 flex-1 rounded-full transition-all",
+              idx < i ? "bg-primary" :
+              idx === i ? "bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(0_0%_15%))]" :
+              "bg-muted"
+            )} />
+          ))}
+        </div>
+        {/* Mode pills (compact) */}
+        <div className="flex gap-1 mt-3 p-0.5 bg-muted/70 rounded-xl text-xs font-semibold">
+          <button onClick={() => setMode("expense")} className={cn("flex-1 h-7 rounded-lg transition", mode === "expense" ? "bg-white shadow-sm" : "text-muted-foreground")}>Expense</button>
+          <button onClick={() => setMode("income")} className={cn("flex-1 h-7 rounded-lg transition", mode === "income" ? "bg-emerald-600 text-white shadow-sm" : "text-muted-foreground")}>Income</button>
+        </div>
+      </div>
+
+      {/* Centered field */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+        <div className="w-full max-w-md animate-rise" key={i}>
+          {steps[i] === "Amount" && (
+            <div className="text-center">
+              <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70 mb-3">How much?</div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-4xl font-bold text-muted-foreground select-none">$</span>
+                <input
+                  autoFocus
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full pl-12 pr-4 h-20 text-5xl font-display font-bold text-center bg-muted rounded-2xl border-2 border-transparent focus:border-primary outline-none transition"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Tap the number, type the amount</p>
+            </div>
+          )}
+
+          {(steps[i] === "Vendor" || steps[i] === "Client") && (
+            <div>
+              <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70 mb-3 text-center">{steps[i] === "Client" ? "Who paid you?" : "Who'd you pay?"}</div>
+              <Input autoFocus value={vendor} onChange={(e) => onVendorChange(e.target.value)} placeholder={steps[i] === "Client" ? "Client name" : "e.g. Home Depot"} className="h-14 text-lg text-center" />
+            </div>
+          )}
+
+          {steps[i] === "Category" && (
+            <div>
+              <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70 mb-3 text-center">Pick a category</div>
+              <div className="grid grid-cols-2 gap-2.5">
+                {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map((k) => {
+                  const Icon = CAT_META[k].icon;
+                  const active = category === k;
+                  return (
+                    <button key={k} onClick={() => { setCategory(k); setTimeout(next, 250); }}
+                      className={cn(
+                        "h-16 rounded-2xl border-2 flex items-center justify-center gap-2 text-sm font-semibold transition-all active:scale-[0.97]",
+                        active ? "border-primary bg-primary/10 text-foreground shadow-red" : "border-border hover:border-primary/50 bg-card"
+                      )}>
+                      <Icon className="w-4 h-4" />
+                      {CAT_META[k].label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {steps[i] === "Project" && (
+            <div>
+              <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70 mb-3 text-center">Which project?</div>
+              <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                <button onClick={() => { setProjectId("none"); setTimeout(next, 200); }}
+                  className={cn("w-full h-12 rounded-xl border-2 text-sm font-semibold transition", projectId === "none" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}>
+                  No project
+                </button>
+                {projects.map((p) => (
+                  <button key={p.id} onClick={() => { setProjectId(p.id); setTimeout(next, 200); }}
+                    className={cn("w-full h-12 rounded-xl border-2 text-sm font-semibold transition", projectId === p.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {steps[i] === "Date" && (
+            <div>
+              <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70 mb-3 text-center">When?</div>
+              <Input autoFocus type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-14 text-lg text-center" />
+            </div>
+          )}
+
+          {steps[i] === "Review" && (
+            <div className="text-center space-y-3">
+              <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70">Review & save</div>
+              <div className={cn("rounded-2xl p-5 text-white", mode === "income" ? "bg-emerald-600" : "bg-[linear-gradient(135deg,hsl(0_82%_48%),hsl(0_0%_8%))]")}>
+                <div className="text-[10px] uppercase tracking-widest opacity-70">{mode === "income" ? "Income" : "Expense"}</div>
+                <div className="font-display font-bold text-4xl mt-1">{mode === "income" ? "+" : "−"}${parseFloat(amount || "0").toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                <div className="text-sm opacity-90 mt-2">{vendor || "—"}{mode === "expense" ? ` · ${CAT_META[category].label}` : ""}</div>
+                <div className="text-xs opacity-70 mt-1">{projectId === "none" ? "No project" : projects.find((p) => p.id === projectId)?.name ?? "No project"} · {date}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-border bg-card flex gap-2">
+        <Button variant="outline" onClick={prev} disabled={i === 0} className="h-12 px-4 rounded-xl font-semibold">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        {i < steps.length - 1 ? (
+          <Button onClick={next} disabled={!canAdvance()} className={cn("flex-1 h-12 rounded-xl font-semibold", mode === "income" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-gradient-primary shadow-red")}>
+            Continue <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        ) : (
+          <Button onClick={onSubmit} disabled={pending || !canAdvance()} className={cn("flex-1 h-12 rounded-xl font-semibold", mode === "income" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-gradient-primary shadow-red")}>
+            {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-1.5" /> Save Entry</>}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
