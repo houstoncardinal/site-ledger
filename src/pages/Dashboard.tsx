@@ -570,7 +570,7 @@ function HeroStat({ label, value, tone, highlight }: { label: string; value: str
   const toneClass =
     tone === "emerald" ? "text-emerald-300" :
     tone === "red" ? "text-red-300" :
-    "text-[hsl(41_78%_78%)]";
+    "text-white";
   return (
     <div className={cn("flex flex-col leading-tight", highlight && "md:border-l md:border-white/10 md:pl-6")}>
       <span className="text-[9px] font-bold tracking-[0.20em] uppercase text-white/40">{label}</span>
