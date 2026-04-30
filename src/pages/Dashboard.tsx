@@ -119,8 +119,8 @@ export default function Dashboard() {
         <div className="relative z-10 px-5 md:px-9 py-6 md:py-7 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="pill-gold animate-glow-pulse">
-                <Zap className="w-3 h-3" /> Command Center
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase text-white/90 bg-white/5 border border-white/15 backdrop-blur animate-glow-pulse">
+                <Zap className="w-3 h-3 text-[hsl(var(--primary))]" /> Command Center
               </span>
               <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-white/40">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
