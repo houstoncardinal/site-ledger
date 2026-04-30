@@ -249,6 +249,17 @@ export default function QuickAddSheet({
   const [lastEntry, setLastEntry] = useState<LastEntry | null>(null);
   const [formLI, setFormLI] = useState<LI[]>([]);
 
+  // ── Guided (gamified) mode ──
+  const [guided, setGuided] = useState<boolean>(() => {
+    try { return localStorage.getItem("sl_guided_mode") === "1"; } catch { return false; }
+  });
+  const [guidedStep, setGuidedStep] = useState(0);
+  useEffect(() => {
+    try { localStorage.setItem("sl_guided_mode", guided ? "1" : "0"); } catch { /* ignore */ }
+  }, [guided]);
+  // Reset to first step when guided turns on or mode flips
+  useEffect(() => { if (guided) setGuidedStep(0); }, [guided, mode]);
+
   // AI voice assistant (guided)
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantPrompt, setAssistantPrompt] = useState<string | null>(null);
