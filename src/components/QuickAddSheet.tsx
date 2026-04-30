@@ -902,7 +902,27 @@ export default function QuickAddSheet({
 
         {/* ── QUICK MODE ── */}
         {step === "quick" && (
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3 relative">
+            {/* Guided mode toggle */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground/70">Entry mode</span>
+              <button
+                type="button"
+                onClick={() => setGuided((g) => !g)}
+                className={cn(
+                  "inline-flex items-center gap-2 h-8 pl-2.5 pr-3 rounded-full text-[11px] font-bold tracking-wide transition-all",
+                  guided
+                    ? "bg-[linear-gradient(135deg,hsl(0_82%_48%),hsl(0_0%_8%))] text-white shadow-red"
+                    : "bg-muted text-foreground hover:bg-foreground hover:text-background"
+                )}
+                title="Toggle Guided (gamified) mode"
+              >
+                <span className={cn("w-4 h-4 rounded-full flex items-center justify-center", guided ? "bg-white/20" : "bg-white")}>
+                  <Sparkles className="w-2.5 h-2.5" />
+                </span>
+                {guided ? "Guided · ON" : "Guided mode"}
+              </button>
+            </div>
             {/* Mode selector: Expense · Income · Advanced */}
             <div className="flex gap-1 p-1 bg-muted/70 rounded-2xl">
               <button
