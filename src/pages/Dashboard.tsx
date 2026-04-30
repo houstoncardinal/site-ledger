@@ -115,7 +115,7 @@ export default function Dashboard() {
       {/* ── Luxe page header ── */}
       <section className="relative rounded-[28px] overflow-hidden hero-luxe animate-rise">
         <div aria-hidden className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-float-slow z-0" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-12 w-80 h-80 rounded-full bg-[hsl(41_70%_52%/0.18)] blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.4s" }} />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-12 w-80 h-80 rounded-full bg-white/10 blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.4s" }} />
         <div className="relative z-10 px-5 md:px-9 py-6 md:py-7 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 mb-3">
