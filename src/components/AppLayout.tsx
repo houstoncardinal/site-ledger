@@ -9,6 +9,7 @@ import HelpPanel from "./HelpPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useOfflineSync, useIsOnline } from "@/hooks/useOfflineSync";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { isAIEnabled } from "@/lib/openai";
 import AIAgentSheet from "./AIAgentSheet";
 
