@@ -2163,11 +2163,16 @@ function GuidedWizard({
           {steps[i] === "Review" && (
             <div className="text-center space-y-3">
               <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70">Review & save</div>
-              <div className={cn("rounded-2xl p-5 text-white", mode === "income" ? "bg-emerald-600" : "bg-[linear-gradient(135deg,hsl(0_82%_48%),hsl(0_0%_8%))]")}>
-                <div className="text-[10px] uppercase tracking-widest opacity-70">{mode === "income" ? "Income" : "Expense"}</div>
-                <div className="font-display font-bold text-4xl mt-1">{mode === "income" ? "+" : "−"}${parseFloat(amount || "0").toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                <div className="text-sm opacity-90 mt-2">{vendor || "—"}{mode === "expense" ? ` · ${CAT_META[category].label}` : ""}</div>
-                <div className="text-xs opacity-70 mt-1">{projectId === "none" ? "No project" : projects.find((p) => p.id === projectId)?.name ?? "No project"} · {date}</div>
+              <div className={cn(
+                "rounded-2xl p-5 border shadow-md",
+                mode === "income"
+                  ? "bg-gradient-to-br from-emerald-50 to-white border-emerald-200 text-emerald-900"
+                  : "bg-gradient-to-br from-[hsl(var(--primary)/0.08)] via-white to-white border-[hsl(var(--primary)/0.25)] text-foreground"
+              )}>
+                <div className={cn("text-[10px] uppercase tracking-widest font-bold", mode === "income" ? "text-emerald-700/80" : "text-primary/80")}>{mode === "income" ? "Income" : "Expense"}</div>
+                <div className={cn("font-display font-bold text-4xl mt-1", mode === "income" ? "text-emerald-700" : "text-primary")}>{mode === "income" ? "+" : "−"}${parseFloat(amount || "0").toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                <div className="text-sm text-foreground/80 mt-2">{vendor || "—"}{mode === "expense" ? ` · ${CAT_META[category].label}` : ""}</div>
+                <div className="text-xs text-muted-foreground mt-1">{projectId === "none" ? "No project" : projects.find((p) => p.id === projectId)?.name ?? "No project"} · {date}</div>
               </div>
             </div>
           )}
