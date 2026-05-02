@@ -178,10 +178,10 @@ export default function ProjectDetail() {
 }
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: "emerald" | "red" }) {
-  const c = accent === "emerald" ? "text-emerald-400" : accent === "red" ? "text-primary" : "";
+  const c = accent === "emerald" ? "text-emerald-600" : accent === "red" ? "text-primary" : "text-foreground";
   return (
     <div>
-      <div className="text-xs text-white/50 uppercase">{label}</div>
+      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.16em]">{label}</div>
       <div className={`font-display font-bold text-2xl mt-1 ${c}`}>{value}</div>
     </div>
   );
