@@ -159,10 +159,10 @@ export default function Receipts() {
               className="max-h-[70vh] max-w-[85vw] rounded-xl object-contain shadow-2xl"
             />
             {/* Meta card */}
-            <div className="w-full bg-zinc-900 rounded-xl p-4 flex items-center justify-between gap-4">
+            <div className="w-full bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4 shadow-lg">
               <div className="min-w-0">
-                <p className="text-white font-semibold truncate">{current.vendor}</p>
-                <p className="text-zinc-400 text-sm">
+                <p className="text-foreground font-semibold truncate">{current.vendor}</p>
+                <p className="text-muted-foreground text-sm">
                   {format(new Date(current.date), "MMM d, yyyy")} · {CATEGORY_LABELS[current.category]}
                   {projects.find((p) => p.id === current.project_id) && (
                     <> · {projects.find((p) => p.id === current.project_id)?.name}</>
@@ -170,19 +170,19 @@ export default function Receipts() {
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className="text-white font-bold text-lg">${Number(current.amount).toLocaleString()}</span>
+                <span className="text-primary font-bold text-lg">${Number(current.amount).toLocaleString()}</span>
                 <a
                   href={current.receipt_url!}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
+                  className="w-8 h-8 rounded-lg bg-muted hover:bg-accent flex items-center justify-center text-foreground transition"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </a>
               </div>
             </div>
-            <p className="text-zinc-500 text-xs">{lightbox + 1} / {withReceipts.length}</p>
+            <p className="text-white/70 text-xs">{lightbox + 1} / {withReceipts.length}</p>
           </div>
         </div>
       )}
