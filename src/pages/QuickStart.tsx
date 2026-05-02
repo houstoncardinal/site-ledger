@@ -46,6 +46,17 @@ export default function QuickStart() {
   const [vendorName, setVendorName] = useState("");
   const [vendorCategory, setVendorCategory] = useState<ExpenseCategory>("materials");
 
+  // ── Concierge welcome banner (dismissible, persists across sessions) ──
+  const WELCOME_KEY = "sl_welcome_dismissed_v1";
+  const [welcomeDismissed, setWelcomeDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(WELCOME_KEY) === "1";
+  });
+  const dismissWelcome = () => {
+    setWelcomeDismissed(true);
+    try { localStorage.setItem(WELCOME_KEY, "1"); } catch { /* noop */ }
+  };
+
   // ── Live stats ──
   const now = new Date();
   const monthStart = startOfMonth(now).toISOString().slice(0, 10);
