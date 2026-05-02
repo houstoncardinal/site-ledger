@@ -76,6 +76,7 @@ export default function AppLayout() {
   const loc = useLocation();
   const nav = useNavigate();
   const { pendingCount } = useOfflineSync();
+  useRealtimeSync();
   const online = useIsOnline();
   const aiEnabled = isAIEnabled();
 
