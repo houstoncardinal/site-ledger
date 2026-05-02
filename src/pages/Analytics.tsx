@@ -608,7 +608,7 @@ function BuilderTab({ filtered }: { filtered: ReturnType<typeof applyFilters> })
                   onClick={() => { setChartType(t); setBuilt(false); }}
                   className={cn(
                     "flex-1 h-10 rounded-md flex items-center justify-center transition",
-                    chartType === t ? "bg-surface-dark text-white" : "bg-muted hover:bg-muted/80"
+                    chartType === t ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted hover:bg-muted/80 text-foreground"
                   )}
                 >
                   <Icon className="w-4 h-4" />
