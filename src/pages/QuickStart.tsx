@@ -156,6 +156,136 @@ export default function QuickStart() {
         </Link>
       </div>
 
+      {/* ── Concierge welcome banner (subtle, dismissible, 3 next steps) ── */}
+      {!welcomeDismissed && (
+        <div
+          className="relative overflow-hidden rounded-2xl border border-border/60 bg-card animate-rise"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-70 pointer-events-none"
+            style={{
+              backgroundImage:
+                "radial-gradient(600px circle at 0% 0%, hsl(0 82% 48% / 0.06), transparent 55%), radial-gradient(500px circle at 100% 100%, hsl(41 70% 52% / 0.07), transparent 60%)",
+            }}
+          />
+          <button
+            onClick={dismissWelcome}
+            aria-label="Dismiss welcome"
+            className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted transition"
+          >
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="relative z-[1] p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-primary flex items-center justify-center shrink-0 shadow-sm">
+                <Sparkles className="w-4 h-4 text-white" strokeWidth={2.2} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold tracking-[0.2em] uppercase text-primary/80">Welcome</div>
+                <div className="font-display font-bold text-[15px] md:text-base mt-0.5 leading-tight">
+                  Your concierge bookkeeper is ready.
+                </div>
+                <div className="text-[12.5px] text-muted-foreground mt-1 leading-snug">
+                  Three quick steps to set up your books — about 60 seconds total.
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 md:gap-2.5 md:w-[460px] shrink-0">
+              {([
+                { n: 1, label: "Log expense", done: expenses.length > 0, action: () => openAction("expense") },
+                { n: 2, label: "Scan receipt", done: false, action: () => openAction("receipt") },
+                { n: 3, label: "New project", done: projects.length > 0, action: () => openAction("project") },
+              ]).map((s) => (
+                <button
+                  key={s.n}
+                  onClick={s.action}
+                  className={cn(
+                    "group relative rounded-xl px-2.5 py-2.5 text-left border transition-all",
+                    "hover:-translate-y-0.5 hover:shadow-md",
+                    s.done
+                      ? "border-emerald-500/30 bg-emerald-500/5"
+                      : "border-border/70 bg-background hover:border-primary/40"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn(
+                      "w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
+                      s.done ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+                    )}>
+                      {s.done ? <Check className="w-2.5 h-2.5" strokeWidth={3} /> : s.n}
+                    </span>
+                    <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground">
+                      Step {s.n}
+                    </span>
+                  </div>
+                  <div className={cn(
+                    "mt-1 text-[12.5px] font-semibold leading-tight",
+                    s.done ? "text-emerald-700 line-through decoration-emerald-500/40" : "text-foreground"
+                  )}>
+                    {s.label}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hero "2-tap expense" tile ── */}
+      <button
+        onClick={() => openAction("expense")}
+        className="group relative w-full overflow-hidden rounded-[22px] text-left animate-rise active:scale-[0.995] transition-all"
+        style={{ boxShadow: "var(--shadow-luxe)" }}
+      >
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,hsl(0_0%_5%)_0%,hsl(0_0%_9%)_45%,hsl(0_60%_18%)_80%,hsl(0_82%_34%)_100%)]" />
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-95 animate-aurora"
+          style={{
+            backgroundImage:
+              "radial-gradient(900px circle at 12% -10%, hsl(0 82% 48% / 0.45), transparent 55%), radial-gradient(700px circle at 95% 30%, hsl(41 78% 68% / 0.18), transparent 55%), radial-gradient(700px circle at 50% 120%, hsl(0 70% 28% / 0.45), transparent 60%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 rounded-[22px]"
+          style={{
+            padding: "1px",
+            background:
+              "linear-gradient(135deg, hsl(41 78% 78% / 0.55), hsl(0 0% 100% / 0.05) 35%, hsl(0 0% 100% / 0.02) 65%, hsl(0 82% 48% / 0.55))",
+            WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMaskComposite: "xor" as any,
+            maskComposite: "exclude" as any,
+            pointerEvents: "none",
+          }}
+        />
+
+        <div className="relative z-10 p-5 md:p-6 flex items-center gap-4 md:gap-5">
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Plus className="w-6 h-6 md:w-7 md:h-7 text-white" strokeWidth={2.4} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/55">
+              Concierge · Two taps
+            </div>
+            <div className="font-display font-bold text-white text-lg md:text-xl leading-tight tracking-tight mt-0.5">
+              Log an expense
+            </div>
+            <div className="text-[12.5px] text-white/65 mt-1 hidden sm:block">
+              Smart vendor + category autofill. Done in seconds.
+            </div>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 px-3 h-9 rounded-xl bg-white text-black text-[12.5px] font-bold tracking-tight shadow-sm group-hover:shadow-md transition-shadow shrink-0">
+            Start <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+          </div>
+          <ChevronRight className="sm:hidden w-5 h-5 text-white/70 shrink-0" />
+        </div>
+      </button>
+
       {/* ── Quick action tiles · luxury glass ── */}
       <div className="animate-rise">
         <div className="flex items-end justify-between mb-3">
