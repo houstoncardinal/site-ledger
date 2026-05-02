@@ -83,9 +83,9 @@ export default function ProjectDetail() {
         <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full blur-3xl bg-[hsl(var(--primary)/0.10)]" />
         <div className="absolute -bottom-20 -left-10 w-72 h-72 rounded-full blur-3xl bg-[hsl(var(--primary)/0.06)]" />
         <div className="relative">
-          <div className="text-xs uppercase tracking-wider text-white/50">{project.client_name ?? "Project"}</div>
-          <h1 className="font-display text-3xl md:text-4xl font-bold mt-1">{project.name}</h1>
-          <div className="text-sm text-white/60 mt-1">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{project.client_name ?? "Project"}</div>
+          <h1 className="font-display text-3xl md:text-4xl font-bold mt-1 text-foreground">{project.name}</h1>
+          <div className="text-sm text-muted-foreground mt-1">
             Started {format(parseISO(project.start_date), "MMM d, yyyy")} · {project.status}
             {project.address && ` · ${project.address}`}
           </div>
@@ -97,10 +97,10 @@ export default function ProjectDetail() {
           </div>
           {project.budget && (
             <div className="mt-5">
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-primary" style={{ width: `${Math.min(100, insights.budgetUsedPct ?? 0)}%` }} />
               </div>
-              <div className="text-xs text-white/60 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 {(insights.budgetUsedPct ?? 0).toFixed(1)}% used · {remaining !== null ? `$${remaining.toLocaleString(undefined, { maximumFractionDigits: 0 })} remaining` : ""}
               </div>
             </div>
@@ -108,7 +108,7 @@ export default function ProjectDetail() {
           {insights.alerts.length > 0 && (
             <div className="mt-5 space-y-1.5">
               {insights.alerts.map((a, i) => (
-                <div key={i} className={`flex items-center gap-2 text-sm ${a.level === "danger" ? "text-primary" : a.level === "warn" ? "text-yellow-400" : "text-white/70"}`}>
+                <div key={i} className={`flex items-center gap-2 text-sm ${a.level === "danger" ? "text-primary" : a.level === "warn" ? "text-warning" : "text-muted-foreground"}`}>
                   <AlertTriangle className="w-4 h-4 shrink-0" /> {a.message}
                 </div>
               ))}
