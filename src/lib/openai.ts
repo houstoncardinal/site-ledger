@@ -1,9 +1,16 @@
 import type { ExpenseCategory } from "./types";
+import { supabase } from "@/integrations/supabase/client";
 
 const API_URL = "https://api.openai.com/v1/chat/completions";
 
 function getKey(): string | null {
   return import.meta.env.VITE_OPENAI_API_KEY || null;
+}
+
+// Receipt scanning runs on Lovable Cloud (edge function + AI Gateway), so it
+// is always available — no user-supplied key required.
+export function isReceiptScanEnabled(): boolean {
+  return true;
 }
 
 export function isAIEnabled(): boolean {
