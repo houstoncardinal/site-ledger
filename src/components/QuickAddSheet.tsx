@@ -2044,15 +2044,34 @@ function GuidedWizard({
     if (k === "Date") return !!date;
     return true;
   };
-  // Auto-advance on field completion
+  // Auto-advance on field completion (debounced, smart per-step)
   useEffect(() => {
     const k = steps[i];
-    if (k === "Amount" && parseFloat(amount || "0") > 0) {
-      const id = setTimeout(() => setStep(Math.min(i + 1, steps.length - 1)), 600);
-      return () => clearTimeout(id);
-    }
+    let delay = 0;
+    let valid = false;
+    if (k === "Amount") { valid = parseFloat(amount || "0") > 0; delay = 700; }
+    else if (k === "Vendor" || k === "Client") { valid = vendor.trim().length >= 2; delay = 1100; }
+    else if (k === "Date") { valid = !!date && /^\d{4}-\d{2}-\d{2}$/.test(date); delay = 500; }
+    if (!valid) return;
+    const id = setTimeout(() => setStep(Math.min(i + 1, steps.length - 1)), delay);
+    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount]);
+  }, [amount, vendor, date, i]);
+
+  // Submit on Enter when valid
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      if (i < steps.length - 1) {
+        if (canAdvance()) { e.preventDefault(); next(); }
+      } else if (canAdvance() && !pending) {
+        e.preventDefault(); onSubmit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, amount, vendor, category, projectId, date, pending]);
 
   return (
     <div className="absolute inset-0 z-30 bg-white animate-fade-in flex flex-col">
