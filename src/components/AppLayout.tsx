@@ -9,6 +9,7 @@ import HelpPanel from "./HelpPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useOfflineSync, useIsOnline } from "@/hooks/useOfflineSync";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { isAIEnabled } from "@/lib/openai";
 import AIAgentSheet from "./AIAgentSheet";
 
@@ -75,6 +76,7 @@ export default function AppLayout() {
   const loc = useLocation();
   const nav = useNavigate();
   const { pendingCount } = useOfflineSync();
+  useRealtimeSync();
   const online = useIsOnline();
   const aiEnabled = isAIEnabled();
 

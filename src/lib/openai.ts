@@ -1,9 +1,16 @@
 import type { ExpenseCategory } from "./types";
+import { supabase } from "@/integrations/supabase/client";
 
 const API_URL = "https://api.openai.com/v1/chat/completions";
 
 function getKey(): string | null {
   return import.meta.env.VITE_OPENAI_API_KEY || null;
+}
+
+// Receipt scanning runs on Lovable Cloud (edge function + AI Gateway), so it
+// is always available — no user-supplied key required.
+export function isReceiptScanEnabled(): boolean {
+  return true;
 }
 
 export function isAIEnabled(): boolean {
@@ -80,109 +87,37 @@ export interface ReceiptData {
 }
 
 export async function analyzeReceipt(imageDataUrl: string): Promise<ReceiptData> {
-  const result = await chat({
-    model: "gpt-4o",
-    max_tokens: 900,
-    messages: [
-      {
-        role: "system",
-        content: `You are an elite receipt analysis engine for a construction company bookkeeping app.
-
-Extract as much structured data as possible from the receipt image.
-
-Return ONLY valid JSON — no markdown, no explanation.
-
-Critical rules:
-- Always return all keys listed in the schema below.
-- Use null for anything you cannot determine.
-- All money fields must be numbers (no currency symbols).
-- line_items: include up to 30 items. If the receipt is too long, include the highest-value or most representative items.
-- vendor should be the merchant name (cleaned).
-- vendor_address should be a single string (street, city, state, zip) if visible.
-- date must be YYYY-MM-DD.
-`,
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: imageDataUrl, detail: "high" },
-          },
-          {
-            type: "text",
-            text: `Analyze this receipt and return JSON with these exact keys (use null for anything you cannot determine):
-{
-  "vendor": "merchant name",
-  "vendor_address": "street, city, state zip",
-  "vendor_phone": "phone number",
-  "receipt_number": "receipt/invoice/transaction number",
-  "date": "YYYY-MM-DD or null",
-  "time": "HH:MM (24h) or null",
-  "subtotal": 0.00,
-  "tax": 0.00,
-  "tip": 0.00,
-  "total": 0.00,
-  "amount": 0.00,
-  "payment_method": "Cash|Credit Card|Debit Card|Check|ACH|Wire|Other|null",
-  "card_last4": "1234",
-  "category": "one of: materials, labor, equipment, subcontractor, operating, other",
-  "description": "short summary of the purchase (max 80 chars)",
-  "line_items": [
-    {
-      "description": "item name",
-      "quantity": 0,
-      "unit_price": 0.00,
-      "total": 0.00
-    }
-  ]
-}
-
-Important:
-- amount must equal total when total is present.
-- If there are no clear line items, return an empty array.
-
-Category rules for construction:
-- materials: lumber, hardware, concrete, pipes, electrical/plumbing supplies, tools bought
-- equipment: equipment rental, machinery, compressors, generators
-- labor: payroll, wages, worker payments
-- subcontractor: contractor payments, trade services
-- operating: fuel, office supplies, insurance, software, vehicle, meals
-- other: anything else`,
-          },
-        ],
-      },
-    ],
+  const { data, error } = await supabase.functions.invoke("scan-receipt", {
+    body: { imageDataUrl },
   });
-
+  if (error) throw new Error(error.message || "Receipt scan failed");
+  if (!data?.data) throw new Error("Receipt scan returned no data");
+  const r = data.data;
   return {
-    vendor: result.vendor ?? null,
-    vendor_address: result.vendor_address ?? null,
-    vendor_phone: result.vendor_phone ?? null,
-    receipt_number: result.receipt_number ?? null,
-    date: result.date ?? null,
-    time: result.time ?? null,
-    subtotal: typeof result.subtotal === "number" ? result.subtotal : null,
-    tax: typeof result.tax === "number" ? result.tax : null,
-    tip: typeof result.tip === "number" ? result.tip : null,
-    total: typeof result.total === "number" ? result.total : null,
-    amount: typeof result.amount === "number"
-      ? result.amount
-      : (typeof result.total === "number" ? result.total : null),
-    payment_method: result.payment_method ?? null,
-    card_last4: result.card_last4 ?? null,
-    category: result.category ?? null,
-    description: result.description ?? null,
-    line_items: Array.isArray(result.line_items)
-      ? result.line_items
-          .filter((x: any) => x && typeof x === "object")
-          .slice(0, 30)
-          .map((x: any) => ({
-            description: typeof x.description === "string" ? x.description : "",
-            quantity: typeof x.quantity === "number" ? x.quantity : null,
-            unit_price: typeof x.unit_price === "number" ? x.unit_price : null,
-            total: typeof x.total === "number" ? x.total : null,
-          }))
+    vendor: r.vendor ?? null,
+    vendor_address: r.vendor_address ?? null,
+    vendor_phone: r.vendor_phone ?? null,
+    receipt_number: r.receipt_number ?? null,
+    date: r.date ?? null,
+    time: r.time ?? null,
+    subtotal: typeof r.subtotal === "number" ? r.subtotal : null,
+    tax: typeof r.tax === "number" ? r.tax : null,
+    tip: typeof r.tip === "number" ? r.tip : null,
+    total: typeof r.total === "number" ? r.total : null,
+    amount: typeof r.amount === "number"
+      ? r.amount
+      : (typeof r.total === "number" ? r.total : null),
+    payment_method: r.payment_method ?? null,
+    card_last4: r.card_last4 ?? null,
+    category: r.category ?? null,
+    description: r.description ?? null,
+    line_items: Array.isArray(r.line_items)
+      ? r.line_items.map((x: any) => ({
+          description: typeof x.description === "string" ? x.description : "",
+          quantity: typeof x.quantity === "number" ? x.quantity : null,
+          unit_price: typeof x.unit_price === "number" ? x.unit_price : null,
+          total: typeof x.total === "number" ? x.total : null,
+        }))
       : [],
   };
 }

@@ -1804,9 +1804,14 @@ export default function QuickAddSheet({
               </div>
             </Field>
 
-            <div className={cn("rounded-xl p-4 flex items-center justify-between text-white", mode === "income" ? "bg-emerald-700" : "bg-surface-dark")}>
-              <span className="text-white/70 text-sm uppercase tracking-wider">Total</span>
-              <span className="font-display font-bold text-2xl">
+            <div className={cn(
+              "rounded-xl p-4 flex items-center justify-between border",
+              mode === "income"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                : "bg-gradient-to-r from-[hsl(var(--primary)/0.06)] to-white border-[hsl(var(--primary)/0.25)] text-foreground"
+            )}>
+              <span className="text-muted-foreground text-xs font-bold uppercase tracking-[0.18em]">Total</span>
+              <span className={cn("font-display font-bold text-2xl", mode === "income" ? "text-emerald-700" : "text-primary")}>
                 {mode === "income" ? "+" : "-"}${computedAmount ? parseFloat(computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) : "0.00"}
               </span>
             </div>
@@ -2039,15 +2044,34 @@ function GuidedWizard({
     if (k === "Date") return !!date;
     return true;
   };
-  // Auto-advance on field completion
+  // Auto-advance on field completion (debounced, smart per-step)
   useEffect(() => {
     const k = steps[i];
-    if (k === "Amount" && parseFloat(amount || "0") > 0) {
-      const id = setTimeout(() => setStep(Math.min(i + 1, steps.length - 1)), 600);
-      return () => clearTimeout(id);
-    }
+    let delay = 0;
+    let valid = false;
+    if (k === "Amount") { valid = parseFloat(amount || "0") > 0; delay = 700; }
+    else if (k === "Vendor" || k === "Client") { valid = vendor.trim().length >= 2; delay = 1100; }
+    else if (k === "Date") { valid = !!date && /^\d{4}-\d{2}-\d{2}$/.test(date); delay = 500; }
+    if (!valid) return;
+    const id = setTimeout(() => setStep(Math.min(i + 1, steps.length - 1)), delay);
+    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount]);
+  }, [amount, vendor, date, i]);
+
+  // Submit on Enter when valid
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      if (i < steps.length - 1) {
+        if (canAdvance()) { e.preventDefault(); next(); }
+      } else if (canAdvance() && !pending) {
+        e.preventDefault(); onSubmit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, amount, vendor, category, projectId, date, pending]);
 
   return (
     <div className="absolute inset-0 z-30 bg-white animate-fade-in flex flex-col">
@@ -2163,11 +2187,16 @@ function GuidedWizard({
           {steps[i] === "Review" && (
             <div className="text-center space-y-3">
               <div className="text-[10px] tracking-[0.22em] uppercase font-bold text-muted-foreground/70">Review & save</div>
-              <div className={cn("rounded-2xl p-5 text-white", mode === "income" ? "bg-emerald-600" : "bg-[linear-gradient(135deg,hsl(0_82%_48%),hsl(0_0%_8%))]")}>
-                <div className="text-[10px] uppercase tracking-widest opacity-70">{mode === "income" ? "Income" : "Expense"}</div>
-                <div className="font-display font-bold text-4xl mt-1">{mode === "income" ? "+" : "−"}${parseFloat(amount || "0").toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                <div className="text-sm opacity-90 mt-2">{vendor || "—"}{mode === "expense" ? ` · ${CAT_META[category].label}` : ""}</div>
-                <div className="text-xs opacity-70 mt-1">{projectId === "none" ? "No project" : projects.find((p) => p.id === projectId)?.name ?? "No project"} · {date}</div>
+              <div className={cn(
+                "rounded-2xl p-5 border shadow-md",
+                mode === "income"
+                  ? "bg-gradient-to-br from-emerald-50 to-white border-emerald-200 text-emerald-900"
+                  : "bg-gradient-to-br from-[hsl(var(--primary)/0.08)] via-white to-white border-[hsl(var(--primary)/0.25)] text-foreground"
+              )}>
+                <div className={cn("text-[10px] uppercase tracking-widest font-bold", mode === "income" ? "text-emerald-700/80" : "text-primary/80")}>{mode === "income" ? "Income" : "Expense"}</div>
+                <div className={cn("font-display font-bold text-4xl mt-1", mode === "income" ? "text-emerald-700" : "text-primary")}>{mode === "income" ? "+" : "−"}${parseFloat(amount || "0").toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                <div className="text-sm text-foreground/80 mt-2">{vendor || "—"}{mode === "expense" ? ` · ${CAT_META[category].label}` : ""}</div>
+                <div className="text-xs text-muted-foreground mt-1">{projectId === "none" ? "No project" : projects.find((p) => p.id === projectId)?.name ?? "No project"} · {date}</div>
               </div>
             </div>
           )}
