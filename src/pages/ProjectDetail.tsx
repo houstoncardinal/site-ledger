@@ -79,8 +79,9 @@ export default function ProjectDetail() {
         </Button>
       </div>
 
-      <div className="bg-surface-dark text-white rounded-xl p-6 md:p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
+      <div className="relative overflow-hidden rounded-2xl p-6 md:p-8 border border-border bg-gradient-to-br from-white via-white to-[hsl(var(--muted))] shadow-md">
+        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full blur-3xl bg-[hsl(var(--primary)/0.10)]" />
+        <div className="absolute -bottom-20 -left-10 w-72 h-72 rounded-full blur-3xl bg-[hsl(var(--primary)/0.06)]" />
         <div className="relative">
           <div className="text-xs uppercase tracking-wider text-white/50">{project.client_name ?? "Project"}</div>
           <h1 className="font-display text-3xl md:text-4xl font-bold mt-1">{project.name}</h1>
