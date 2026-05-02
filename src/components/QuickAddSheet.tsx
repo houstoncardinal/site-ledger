@@ -1804,9 +1804,14 @@ export default function QuickAddSheet({
               </div>
             </Field>
 
-            <div className={cn("rounded-xl p-4 flex items-center justify-between text-white", mode === "income" ? "bg-emerald-700" : "bg-surface-dark")}>
-              <span className="text-white/70 text-sm uppercase tracking-wider">Total</span>
-              <span className="font-display font-bold text-2xl">
+            <div className={cn(
+              "rounded-xl p-4 flex items-center justify-between border",
+              mode === "income"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                : "bg-gradient-to-r from-[hsl(var(--primary)/0.06)] to-white border-[hsl(var(--primary)/0.25)] text-foreground"
+            )}>
+              <span className="text-muted-foreground text-xs font-bold uppercase tracking-[0.18em]">Total</span>
+              <span className={cn("font-display font-bold text-2xl", mode === "income" ? "text-emerald-700" : "text-primary")}>
                 {mode === "income" ? "+" : "-"}${computedAmount ? parseFloat(computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) : "0.00"}
               </span>
             </div>
