@@ -17,16 +17,12 @@ export function useRealtimeSync() {
     const channel = supabase.channel("app-sync");
 
     for (const table of TABLES) {
-      channel.on(
-        "postgres_changes" as never,
-        // @ts-ignore
-        { event: "*", schema: "public", table },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (channel as any).on(
+        "postgres_changes",
         { event: "*", schema: "public", table },
         () => {
-          // Invalidate the query that maps to this table plus any derived ones.
           qc.invalidateQueries({ queryKey: [table] });
-          // Cross-table summaries (dashboard, analytics) — refresh anything
-          // that depends on transactions.
           if (table === "expenses" || table === "incomes") {
             qc.invalidateQueries({ queryKey: ["transactions"] });
           }
