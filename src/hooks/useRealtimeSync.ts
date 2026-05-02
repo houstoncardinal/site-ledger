@@ -18,8 +18,9 @@ export function useRealtimeSync() {
 
     for (const table of TABLES) {
       channel.on(
-        // @ts-expect-error - postgres_changes is supported at runtime
-        "postgres_changes",
+        "postgres_changes" as never,
+        // @ts-ignore
+        { event: "*", schema: "public", table },
         { event: "*", schema: "public", table },
         () => {
           // Invalidate the query that maps to this table plus any derived ones.
