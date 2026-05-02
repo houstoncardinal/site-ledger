@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Sparkles, Plus, FolderKanban, Receipt, Camera, Users,
   ArrowRight, Zap, LayoutDashboard, TrendingUp, TrendingDown,
   DollarSign, Activity, ChevronRight, Clock, Layers,
-  BarChart3, Building2, FileText, Package,
+  BarChart3, Building2, FileText, Package, Check, X as XIcon,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
