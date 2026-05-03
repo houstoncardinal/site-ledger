@@ -41,6 +41,54 @@ export type Database = {
         }
         Relationships: []
       }
+      checks: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"] | null
+          check_number: string
+          cleared_date: string | null
+          created_at: string
+          date: string
+          id: string
+          memo: string | null
+          payee: string
+          project_id: string | null
+          status: Database["public"]["Enums"]["check_status"]
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category?: Database["public"]["Enums"]["expense_category"] | null
+          check_number: string
+          cleared_date?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          memo?: string | null
+          payee: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["check_status"]
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"] | null
+          check_number?: string
+          cleared_date?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          memo?: string | null
+          payee?: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["check_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           account_id: string | null
@@ -263,6 +311,7 @@ export type Database = {
     }
     Enums: {
       account_type: "cash" | "bank" | "credit_card"
+      check_status: "outstanding" | "cleared" | "voided"
       expense_category:
         | "labor"
         | "materials"
@@ -401,6 +450,7 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["cash", "bank", "credit_card"],
+      check_status: ["outstanding", "cleared", "voided"],
       expense_category: [
         "labor",
         "materials",
