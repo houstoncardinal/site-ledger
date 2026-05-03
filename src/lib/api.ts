@@ -1,7 +1,34 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  Account, Expense, Income, Project, Vendor,
+  Account, Check, Expense, Income, Project, Vendor,
 } from "./types";
+
+// ---------- Checks ----------
+export const checksApi = {
+  list: async (): Promise<Check[]> => {
+    const { data, error } = await supabase
+      .from("checks" as any)
+      .select("*")
+      .order("date", { ascending: false })
+      .limit(1000);
+    if (error) throw error;
+    return (data ?? []) as unknown as Check[];
+  },
+  create: async (c: Partial<Check>) => {
+    const { data, error } = await supabase.from("checks" as any).insert(c as any).select().single();
+    if (error) throw error;
+    return data as unknown as Check;
+  },
+  update: async (id: string, c: Partial<Check>) => {
+    const { data, error } = await supabase.from("checks" as any).update(c as any).eq("id", id).select().single();
+    if (error) throw error;
+    return data as unknown as Check;
+  },
+  delete: async (id: string) => {
+    const { error } = await supabase.from("checks" as any).delete().eq("id", id);
+    if (error) throw error;
+  },
+};
 
 // ---------- Projects ----------
 export const projectsApi = {

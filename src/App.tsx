@@ -14,6 +14,7 @@ import Transactions from "./pages/Transactions";
 import Accounts from "./pages/Accounts";
 import Receipts from "./pages/Receipts";
 import Analytics from "./pages/Analytics";
+import Checks from "./pages/Checks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/vendors" element={<Vendors />} />
             <Route path="/vendors/:id" element={<VendorDetail />} />
             <Route path="/transactions" element={<Transactions />} />
+            <Route path="/checks" element={<Checks />} />
             <Route path="/receipts" element={<Receipts />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/accounts" element={<Accounts />} />

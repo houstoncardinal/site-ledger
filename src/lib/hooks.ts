@@ -1,8 +1,38 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { accountsApi, expensesApi, incomesApi, projectsApi, vendorsApi } from "./api";
+import { accountsApi, checksApi, expensesApi, incomesApi, projectsApi, vendorsApi } from "./api";
 import { toast } from "sonner";
-import type { Expense, Income, Project, Account, Vendor } from "./types";
+import type { Check, Expense, Income, Project, Account, Vendor } from "./types";
 import { queueAdd } from "./offlineQueue";
+
+export const useChecks = () =>
+  useQuery({ queryKey: ["checks"], queryFn: checksApi.list });
+
+export const useCreateCheck = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (c: Partial<Check>) => checksApi.create(c),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["checks"] }); toast.success("Check recorded"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+};
+
+export const useUpdateCheck = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...c }: Partial<Check> & { id: string }) => checksApi.update(id, c),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["checks"] }); toast.success("Check updated"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+};
+
+export const useDeleteCheck = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => checksApi.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["checks"] }); toast.success("Check deleted"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+};
 
 export const useProjects = () =>
   useQuery({ queryKey: ["projects"], queryFn: projectsApi.list });
