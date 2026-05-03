@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, FolderKanban, Plus, Receipt, Wallet,
-  Image, WifiOff, BarChart2, HelpCircle, Zap, Users,
+  Image, WifiOff, BarChart2, HelpCircle, Zap, Users, FileSignature,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import QuickAddSheet from "./QuickAddSheet";
@@ -23,6 +23,7 @@ const NAV_MANAGE = [
   { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/vendors", label: "Vendors", icon: Users },
   { to: "/transactions", label: "Transactions", icon: Receipt },
+  { to: "/checks", label: "Checks", icon: FileSignature, badge: "NEW" },
   { to: "/receipts", label: "Receipts", icon: Image },
   { to: "/accounts", label: "Accounts", icon: Wallet },
 ];
@@ -34,6 +35,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/projects": "Projects",
   "/vendors": "Vendors",
   "/transactions": "Transactions",
+  "/checks": "Check Register",
   "/receipts": "Receipts",
   "/accounts": "Accounts",
 };
