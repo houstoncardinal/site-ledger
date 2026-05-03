@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
  * perfect sync — any insert/update/delete on one client appears on all
  * others within a few hundred milliseconds.
  */
-const TABLES = ["projects", "expenses", "incomes", "accounts", "vendors"] as const;
+const TABLES = ["projects", "expenses", "incomes", "accounts", "vendors", "checks"] as const;
 
 export function useRealtimeSync() {
   const qc = useQueryClient();
