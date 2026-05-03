@@ -11,6 +11,29 @@ export type ExpenseCategory =
 
 export type PaymentStatus = "paid" | "unpaid" | "partial";
 export type AccountType = "cash" | "bank" | "credit_card";
+export type CheckStatus = "outstanding" | "cleared" | "voided";
+
+export interface Check {
+  id: string;
+  check_number: string;
+  payee: string;
+  amount: number;
+  date: string;
+  memo: string | null;
+  status: CheckStatus;
+  cleared_date: string | null;
+  project_id: string | null;
+  account_id: string | null;
+  category: ExpenseCategory | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const CHECK_STATUS_LABELS: Record<CheckStatus, string> = {
+  outstanding: "Outstanding",
+  cleared: "Cleared",
+  voided: "Voided",
+};
 
 export interface Project {
   id: string;
