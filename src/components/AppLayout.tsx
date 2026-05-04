@@ -281,7 +281,7 @@ export default function AppLayout() {
         >
           <Plus className="w-6 h-6" strokeWidth={2.5} />
           {/* Tooltip */}
-          <span className="absolute right-full mr-3 whitespace-nowrap text-xs font-semibold text-white bg-surface-dark px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-150 translate-x-1 group-hover:translate-x-0">
+          <span className="absolute right-full mr-3 whitespace-nowrap text-xs font-semibold text-white bg-foreground px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-150 translate-x-1 group-hover:translate-x-0">
             New Entry
           </span>
         </button>
