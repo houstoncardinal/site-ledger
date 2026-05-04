@@ -426,7 +426,7 @@ export default function AIAgentSheet({ open, onOpenChange }: Props) {
                 className={cn(
                   "max-w-[88%] rounded-3xl px-4 py-2.5 text-sm leading-relaxed border shadow-sm",
                    m.role === "user"
-                     ? "ml-auto bg-surface-dark text-white border-black/10"
+                     ? "ml-auto bg-foreground text-background border-foreground/20"
                      : "mr-auto bg-white border-black/5 text-foreground",
                 )}
               >
