@@ -20,10 +20,10 @@ const NAV_OVERVIEW = [
 ];
 
 const NAV_MANAGE = [
+  { to: "/checks", label: "Checks", icon: FileSignature, badge: "PRIORITY" },
   { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/vendors", label: "Vendors", icon: Users },
   { to: "/transactions", label: "Transactions", icon: Receipt },
-  { to: "/checks", label: "Checks", icon: FileSignature, badge: "NEW" },
   { to: "/receipts", label: "Receipts", icon: Image },
   { to: "/accounts", label: "Accounts", icon: Wallet },
 ];
