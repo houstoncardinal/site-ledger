@@ -1232,7 +1232,7 @@ export default function QuickAddSheet({
                     }}
                     className={cn(
                       "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0",
-                      assistantBusy ? "bg-muted" : "bg-surface-dark",
+                      assistantBusy ? "bg-muted" : "bg-gradient-primary",
                       assistantVoice.listening ? "ring-2 ring-primary" : "",
                     )}
                     aria-label="Talk to AI"
@@ -1287,39 +1287,45 @@ export default function QuickAddSheet({
                 onClick={() => { setMode("income"); setStep("form"); }}
                 className={cn(
                   "relative h-[100px] rounded-2xl overflow-hidden",
-                  "bg-gradient-to-br from-emerald-500 to-emerald-700",
-                  "text-white p-4 flex flex-col justify-between text-left",
-                  "shadow-lg border border-emerald-400/20",
+                  "bg-gradient-to-br from-emerald-50 to-white",
+                  "text-foreground p-4 flex flex-col justify-between text-left",
+                  "shadow-sm border border-emerald-200/70",
+                  "hover:shadow-md hover:-translate-y-[1px]",
                   "active:scale-[0.98] transition-all duration-150",
                 )}
               >
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.15),transparent)] pointer-events-none" />
-                <DollarSign className="w-6 h-6 text-emerald-100" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(145_65%_38%/0.08),transparent_60%)] pointer-events-none" />
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                  <DollarSign className="w-4.5 h-4.5 text-emerald-600" />
+                </div>
                 <div>
-                  <div className="font-display font-bold text-base">Income</div>
-                  <div className="text-[11px] text-emerald-200/80 font-medium">Client payment · Invoice</div>
+                  <div className="font-display font-bold text-base text-foreground">Income</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">Client payment · Invoice</div>
                 </div>
               </button>
               <button
                 onClick={() => { setMode("expense"); setCategory("other"); setStep("form"); }}
                 className={cn(
                   "relative h-[100px] rounded-2xl overflow-hidden",
-                  "bg-gradient-to-br from-zinc-800 to-zinc-950",
-                  "text-white p-4 flex flex-col justify-between text-left",
-                  "shadow-lg border border-white/[0.06]",
+                  "bg-gradient-to-br from-white to-[hsl(0_78%_98%)]",
+                  "text-foreground p-4 flex flex-col justify-between text-left",
+                  "shadow-sm border border-primary/20",
+                  "hover:shadow-md hover:-translate-y-[1px]",
                   "active:scale-[0.98] transition-all duration-150",
                 )}
               >
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.06),transparent)] pointer-events-none" />
-                <ReceiptIcon className="w-6 h-6 text-zinc-400" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(0_82%_48%/0.08),transparent_60%)] pointer-events-none" />
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <ReceiptIcon className="w-4.5 h-4.5 text-primary" />
+                </div>
                 <div>
-                  <div className="font-display font-bold text-base">Expense</div>
-                  <div className="text-[11px] text-zinc-400/80 font-medium">General cost · Any type</div>
+                  <div className="font-display font-bold text-base text-foreground">Expense</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">General cost · Any type</div>
                 </div>
               </button>
             </div>
 
-            <div className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/50 mb-2.5">By Category</div>
+            <div className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/60 mb-2.5">By Category</div>
             <div className="grid grid-cols-3 gap-2">
               {CATS.map((t) => (
                 <button
@@ -1327,17 +1333,17 @@ export default function QuickAddSheet({
                   onClick={() => { setMode("expense"); setCategory(t.type); setStep("form"); }}
                   className={cn(
                     "relative h-[88px] rounded-2xl overflow-hidden",
-                    "bg-gradient-to-br from-zinc-800 to-zinc-950",
-                    "text-white p-3 flex flex-col justify-between text-left",
-                    "border border-white/[0.06] shadow-sm",
-                    "hover:from-zinc-700 hover:to-zinc-900",
+                    "bg-white",
+                    "text-foreground p-3 flex flex-col justify-between text-left",
+                    "border border-border/70 shadow-sm",
+                    "hover:border-primary/30 hover:shadow-md hover:-translate-y-[1px]",
                     "active:scale-[0.97] transition-all duration-150",
                   )}
                 >
                   <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br shrink-0", t.color)}>
                     <t.icon className="w-4 h-4 text-white" />
                   </div>
-                  <div className="font-semibold text-xs leading-tight text-zinc-200">{CATEGORY_LABELS[t.type]}</div>
+                  <div className="font-semibold text-xs leading-tight text-foreground">{CATEGORY_LABELS[t.type]}</div>
                 </button>
               ))}
             </div>

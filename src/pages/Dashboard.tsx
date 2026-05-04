@@ -114,29 +114,29 @@ export default function Dashboard() {
     <div className="px-4 py-6 md:px-8 md:py-8 space-y-6 max-w-7xl mx-auto">
       {/* ── Luxe page header ── */}
       <section className="relative rounded-[28px] overflow-hidden hero-luxe animate-rise">
-        <div aria-hidden className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-float-slow z-0" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-12 w-80 h-80 rounded-full bg-white/10 blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.4s" }} />
+        <div aria-hidden className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-primary/10 blur-3xl animate-float-slow z-0" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-12 w-80 h-80 rounded-full bg-[hsl(var(--gold)/0.10)] blur-3xl animate-float-slow z-0" style={{ animationDelay: "1.4s" }} />
         <div className="relative z-10 px-5 md:px-9 py-6 md:py-7 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase text-white/90 bg-white/5 border border-white/15 backdrop-blur animate-glow-pulse">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase text-foreground/80 bg-white border border-border/70 shadow-sm">
                 <Zap className="w-3 h-3 text-[hsl(var(--primary))]" /> Command Center
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-white/40">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live
               </span>
             </div>
-            <h1 className="font-display text-3xl md:text-[44px] font-bold tracking-[-0.02em] text-white">
+            <h1 className="font-display text-3xl md:text-[44px] font-bold tracking-[-0.02em] text-foreground">
               Financial <span className="font-serif-luxe italic text-luxe-shimmer">overview</span>
             </h1>
-            <p className="text-white/55 text-[13px] md:text-sm mt-1.5 max-w-xl">
+            <p className="text-muted-foreground text-[13px] md:text-sm mt-1.5 max-w-xl">
               Real-time profit, burn rate, and project health — every dollar accounted for.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <ReportButton size="sm" />
-            <div className="flex gap-0.5 bg-white/8 border border-white/10 rounded-xl p-1 backdrop-blur">
+            <div className="flex gap-0.5 bg-muted/60 border border-border/70 rounded-xl p-1">
               {[7, 30, 90].map((d) => (
                 <button
                   key={d}
@@ -145,7 +145,7 @@ export default function Dashboard() {
                     "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
                     range === d
                       ? "bg-white text-foreground shadow-sm"
-                      : "text-white/55 hover:text-white"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {d}D
@@ -154,9 +154,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="h-px w-full bg-[linear-gradient(90deg,transparent,hsl(0_82%_48%/0.55)_30%,hsl(0_0%_100%/0.7)_50%,hsl(0_82%_48%/0.55)_70%,transparent)]" />
+        <div className="rule-gold" />
         {/* Live KPI strip in hero */}
-        <div className="relative z-10 px-5 md:px-9 py-3.5 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 bg-black/20 backdrop-blur-xl">
+        <div className="relative z-10 px-5 md:px-9 py-3.5 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 bg-white/60 backdrop-blur-xl">
           <HeroStat label="Revenue" value={fmt(totalRevenue)} tone="emerald" />
           <HeroStat label="Expenses" value={fmt(totalSpend)} tone="red" />
           <HeroStat label="Net Profit" value={`${netProfit >= 0 ? "+" : "−"}${fmt(Math.abs(netProfit))}`} tone={netProfit >= 0 ? "emerald" : "red"} highlight />
@@ -472,14 +472,14 @@ function KPI({ label, value, icon: Icon, accent, color }: { label: string; value
   const valueColor = color === "emerald" ? "text-emerald-600" : color === "red" ? "text-primary" : "text-foreground";
   if (accent) {
     return (
-      <div className="rounded-2xl p-4 md:p-5 bg-[#111] text-white" style={{ boxShadow: "var(--shadow-md)" }}>
+      <div className="luxe-card p-4 md:p-5 ring-1 ring-primary/20">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-semibold text-white/50 tracking-wide">{label}</span>
-          <div className="w-7 h-7 rounded-lg bg-white/[0.07] flex items-center justify-center">
+          <span className="text-[11px] font-semibold text-muted-foreground tracking-wide">{label}</span>
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Icon className="w-3.5 h-3.5 text-primary" />
           </div>
         </div>
-        <div className="font-display font-bold text-2xl md:text-[28px] leading-none text-white">{value}</div>
+        <div className="font-display font-bold text-2xl md:text-[28px] leading-none text-foreground">{value}</div>
       </div>
     );
   }
@@ -568,13 +568,14 @@ function DashboardSkeleton() {
 
 function HeroStat({ label, value, tone, highlight }: { label: string; value: string; tone: "emerald" | "red" | "gold"; highlight?: boolean }) {
   const toneClass =
-    tone === "emerald" ? "text-emerald-300" :
-    tone === "red" ? "text-red-300" :
-    "text-white";
+    tone === "emerald" ? "text-emerald-600" :
+    tone === "red" ? "text-primary" :
+    tone === "gold" ? "text-[hsl(var(--gold-deep))]" :
+    "text-foreground";
   return (
-    <div className={cn("flex flex-col leading-tight", highlight && "md:border-l md:border-white/10 md:pl-6")}>
-      <span className="text-[9px] font-bold tracking-[0.20em] uppercase text-white/40">{label}</span>
-      <span className={cn("font-display font-bold text-[20px] md:text-[26px] tabular-nums tracking-tight mt-0.5", highlight ? toneClass : "text-white")}>
+    <div className={cn("flex flex-col leading-tight", highlight && "md:border-l md:border-border/70 md:pl-6")}>
+      <span className="text-[9px] font-bold tracking-[0.20em] uppercase text-muted-foreground">{label}</span>
+      <span className={cn("font-display font-bold text-[20px] md:text-[26px] tabular-nums tracking-tight mt-0.5", highlight ? toneClass : "text-foreground")}>
         {value}
       </span>
     </div>
