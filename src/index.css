@@ -42,9 +42,9 @@
 
     --radius: 0.75rem;
 
-    /* ─── Surface Dark (sidebar) ─── */
-    --surface-dark: 0 0% 7%;
-    --surface-dark-foreground: 0 0% 96%;
+    /* ─── Surface Dark (legacy → now LIGHT luxury surface) ─── */
+    --surface-dark: 0 0% 100%;
+    --surface-dark-foreground: 0 0% 9%;
 
     /* ─── Luxury accents ─── */
     --gold: 41 70% 52%;
@@ -58,10 +58,10 @@
     --gradient-dark: linear-gradient(160deg, hsl(220 25% 8%), hsl(220 22% 14%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 97%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 99%) 100%);
-    --gradient-luxe: linear-gradient(135deg, hsl(0 0% 5%) 0%, hsl(0 0% 9%) 40%, hsl(0 60% 16%) 75%, hsl(0 78% 30%) 100%);
-    --gradient-aurora: radial-gradient(900px circle at 12% -10%, hsl(0 82% 48% / 0.38), transparent 55%),
-                       radial-gradient(700px circle at 88% 20%, hsl(0 0% 100% / 0.10), transparent 55%),
-                       radial-gradient(600px circle at 50% 110%, hsl(0 70% 28% / 0.45), transparent 60%);
+    --gradient-luxe: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(210 40% 99%) 45%, hsl(0 78% 97%) 100%);
+    --gradient-aurora: radial-gradient(900px circle at 12% -10%, hsl(0 82% 48% / 0.10), transparent 55%),
+                       radial-gradient(700px circle at 88% 20%, hsl(41 70% 52% / 0.10), transparent 55%),
+                       radial-gradient(600px circle at 50% 110%, hsl(0 0% 0% / 0.04), transparent 60%);
     --gradient-gold: linear-gradient(135deg, hsl(41 78% 68%) 0%, hsl(41 70% 52%) 50%, hsl(36 60% 38%) 100%);
     --gradient-text-luxe: linear-gradient(120deg, hsl(0 0% 100%) 0%, hsl(0 0% 88%) 40%, hsl(0 0% 100%) 80%);
 
@@ -76,14 +76,14 @@
     --shadow-luxe: 0 30px 60px -20px hsl(220 25% 8% / 0.45), 0 12px 24px -12px hsl(0 82% 48% / 0.18);
     --shadow-gold: 0 8px 28px -6px hsl(41 70% 52% / 0.45);
 
-    /* ─── Sidebar tokens ─── */
-    --sidebar-background: 0 0% 7%;
-    --sidebar-foreground: 0 0% 90%;
+    /* ─── Sidebar tokens (light luxury) ─── */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 18%;
     --sidebar-primary: 0 82% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 13%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 0 0% 14%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 214 32% 91%;
     --sidebar-ring: 0 82% 48%;
   }
 
