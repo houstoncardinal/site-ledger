@@ -1232,7 +1232,7 @@ export default function QuickAddSheet({
                     }}
                     className={cn(
                       "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0",
-                      assistantBusy ? "bg-muted" : "bg-surface-dark",
+                      assistantBusy ? "bg-muted" : "bg-gradient-primary",
                       assistantVoice.listening ? "ring-2 ring-primary" : "",
                     )}
                     aria-label="Talk to AI"
