@@ -472,14 +472,14 @@ function KPI({ label, value, icon: Icon, accent, color }: { label: string; value
   const valueColor = color === "emerald" ? "text-emerald-600" : color === "red" ? "text-primary" : "text-foreground";
   if (accent) {
     return (
-      <div className="rounded-2xl p-4 md:p-5 bg-[#111] text-white" style={{ boxShadow: "var(--shadow-md)" }}>
+      <div className="luxe-card p-4 md:p-5 ring-1 ring-primary/20">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-semibold text-white/50 tracking-wide">{label}</span>
-          <div className="w-7 h-7 rounded-lg bg-white/[0.07] flex items-center justify-center">
+          <span className="text-[11px] font-semibold text-muted-foreground tracking-wide">{label}</span>
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Icon className="w-3.5 h-3.5 text-primary" />
           </div>
         </div>
-        <div className="font-display font-bold text-2xl md:text-[28px] leading-none text-white">{value}</div>
+        <div className="font-display font-bold text-2xl md:text-[28px] leading-none text-foreground">{value}</div>
       </div>
     );
   }
