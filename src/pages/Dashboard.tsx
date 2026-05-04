@@ -568,13 +568,14 @@ function DashboardSkeleton() {
 
 function HeroStat({ label, value, tone, highlight }: { label: string; value: string; tone: "emerald" | "red" | "gold"; highlight?: boolean }) {
   const toneClass =
-    tone === "emerald" ? "text-emerald-300" :
-    tone === "red" ? "text-red-300" :
-    "text-white";
+    tone === "emerald" ? "text-emerald-600" :
+    tone === "red" ? "text-primary" :
+    tone === "gold" ? "text-[hsl(var(--gold-deep))]" :
+    "text-foreground";
   return (
-    <div className={cn("flex flex-col leading-tight", highlight && "md:border-l md:border-white/10 md:pl-6")}>
-      <span className="text-[9px] font-bold tracking-[0.20em] uppercase text-white/40">{label}</span>
-      <span className={cn("font-display font-bold text-[20px] md:text-[26px] tabular-nums tracking-tight mt-0.5", highlight ? toneClass : "text-white")}>
+    <div className={cn("flex flex-col leading-tight", highlight && "md:border-l md:border-border/70 md:pl-6")}>
+      <span className="text-[9px] font-bold tracking-[0.20em] uppercase text-muted-foreground">{label}</span>
+      <span className={cn("font-display font-bold text-[20px] md:text-[26px] tabular-nums tracking-tight mt-0.5", highlight ? toneClass : "text-foreground")}>
         {value}
       </span>
     </div>
