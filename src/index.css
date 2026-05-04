@@ -63,7 +63,7 @@
                        radial-gradient(700px circle at 88% 20%, hsl(41 70% 52% / 0.10), transparent 55%),
                        radial-gradient(600px circle at 50% 110%, hsl(0 0% 0% / 0.04), transparent 60%);
     --gradient-gold: linear-gradient(135deg, hsl(41 78% 68%) 0%, hsl(41 70% 52%) 50%, hsl(36 60% 38%) 100%);
-    --gradient-text-luxe: linear-gradient(120deg, hsl(0 0% 100%) 0%, hsl(0 0% 88%) 40%, hsl(0 0% 100%) 80%);
+    --gradient-text-luxe: linear-gradient(120deg, hsl(0 0% 9%) 0%, hsl(0 82% 48%) 50%, hsl(0 0% 9%) 100%);
 
     /* ─── Elevation / Shadows ─── */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
