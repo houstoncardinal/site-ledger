@@ -260,14 +260,15 @@
     letter-spacing: -0.01em;
   }
 
-  /* Premium dark hero surface with aurora glow */
+  /* Premium LIGHT hero surface with subtle aurora glow */
   .hero-luxe {
     position: relative;
     background: var(--gradient-luxe);
-    border: 1px solid hsl(0 0% 100% / 0.06);
-    box-shadow: var(--shadow-luxe);
+    border: 1px solid hsl(var(--border) / 0.7);
+    box-shadow: 0 1px 0 hsl(0 0% 100%) inset, var(--shadow-lg);
     overflow: hidden;
     isolation: isolate;
+    color: hsl(var(--foreground));
   }
   .hero-luxe::before {
     content: "";
@@ -276,22 +277,21 @@
     background: var(--gradient-aurora);
     opacity: 0.95;
     z-index: 0;
-    animation: aurora-drift 18s ease-in-out infinite alternate;
+    animation: aurora-drift 22s ease-in-out infinite alternate;
   }
   .hero-luxe::after {
     content: "";
     position: absolute;
     inset: 0;
     background-image:
-      radial-gradient(1px 1px at 18% 32%, hsl(0 0% 100% / 0.18), transparent 60%),
-      radial-gradient(1px 1px at 72% 18%, hsl(41 78% 88% / 0.22), transparent 60%),
-      radial-gradient(1px 1px at 42% 72%, hsl(0 0% 100% / 0.14), transparent 60%),
-      radial-gradient(1.5px 1.5px at 88% 65%, hsl(41 78% 88% / 0.18), transparent 60%);
-    opacity: 0.7;
+      radial-gradient(1px 1px at 22% 30%, hsl(0 82% 48% / 0.10), transparent 60%),
+      radial-gradient(1.5px 1.5px at 78% 22%, hsl(41 70% 52% / 0.14), transparent 60%);
+    opacity: 0.8;
     z-index: 0;
     pointer-events: none;
   }
 
+  /* Luxe text shimmer (light bg) */
   /* Hairline gold rule */
   .rule-gold {
     height: 1px;
